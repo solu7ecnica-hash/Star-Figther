@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Star Fighter</title>
+    <style>
+        /* Força o ralo compressor nas estruturas do tema do Blogger */
+        .bg-photo-overlay, .bg-photo-container, .centered-top-placeholder, 
+        .centered-top-container, header, .skip-navigation, .sidebar-container {
+            display: none !important; height: 0 !important; padding: 0 !important; margin: 0 !important;
+        }
+        .page, .page_body, .centered, .centered-bottom, .main, .main-section {
+            padding: 0 !important; margin: 0 !important; max-width: 100% !important; width: 100% !important;
+        }
+
+        /* Enquadra o jogo em tela cheia fixa por cima de tudo */
+        .caixa-jogo-fixa {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background-color: #000000 !important;
+            z-index: 999999 !important;
+            overflow: hidden !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+        }
+        canvas { display: block !important; }
+    </style>
+</head>
+<body>
+
+<div class="caixa-jogo-fixa">
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // --- CARREGAMENTO DE ASSETS ---
+    const imgNave = new Image();
+    imgNave.src = "https://tinyurl.com/sh-nave"; 
+
+    const imgTiro = new Image();
+    imgTiro.src = "https://tinyurl.com/sh-gosma"; 
+
+    const imgFundo = new Image();
+    imgFundo.src = "https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?q=80&w=640&auto=format&fit=crop";
+
+    function tocarSomTiro() {
+        try {
+            const somTiro = new Audio("https://docs.google.com/uc?export=download&id=SUA_ID_DO_DRIVE_AQUI");
+            somTiro.volume = 0.4; 
+            somTiro.play().catch(e => {});
+        } catch (erro) {}
+    }
+
+    const jugador = { 
+        x: 0, y: 0, largura: 60, altura: 60, velocidade: 8,
+        movendoEsquerda: false, movendoDireita: false, movendoCima: false, movendoBaixo: false
+    };
+    const x_jogador = jugador;
+
+    const cenario = { y1: 0, y2: 0, velocidade: 4 };
+    const tiros = [];
+
+    const painel = {
+        y: 0, altura: 160,
+        btnEsq: { x: 15, y: 0, l: 55, a: 55 },
+        btnDir: { x: 125, y: 0, l: 55, a: 55 },
+        btnCima: { x: 70, y: 0, l: 55, a: 55 },
+        btnBaixo: { x: 70, y: 0, l: 55, a: 55 },
+        btnAtirar: { x: 0, y: 0, raio: 45 } 
+    };
+
+    function configurarPainel() {
+        painel.y = canvas.height - painel.altura;
+        cenario.y2 = -canvas.height;
+
+        painel.btnCima.y = painel.y + 10;
+        painel.btnEsq.y = painel.y + 55;
+        painel.btnDir.y = painel.y + 55;
+        painel.btnBaixo.y = painel.y + 100;
+
+        painel.btnAtirar.x = canvas.width - painel.btnAtirar.raio - 25;
+        painel.btnAtirar.y = painel.y + (painel.altura / 2);
+
+        x_jogador.x = canvas.width / 2 - x_jogador.largura / 2;
+        x_jogador.y = painel.y - x_jogador.altura - 20;
+    }
+
+    function ajustarTela() {
+        const larguraReal = window.innerWidth;
+        const alturaReal = window.innerHeight;
+
+        canvas.height = alturaReal;
+        canvas.width = alturaReal * (9 / 16);
+        
+        if (canvas.width > larguraReal) {
+            canvas.width = larguraReal;
+            canvas.height = larguraReal * (16 / 9);
+        }
+        
+        configurarPainel();
+    }
+
+    // --- CONTROLES TECLADO ---
+    window.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft" || e.key === "a") x_jogador.movendoEsquerda = true;
+        if (e.key === "ArrowRight" || e.key === "d") x_jogador.movendoDireita = true;
+        if (e.key === "ArrowUp" || e.key === "w") x_jogador.movendoCima = true;
+        if (e.key === "ArrowDown" || e.key === "s") x_jogador.movendoBaixo = true;
+        if (e.key === " " || e.key === "Enter") atirar();
+    });
+
+    window.addEventListener("keyup", (e) => {
+        if (e.key === "ArrowLeft" || e.key === "a") x_jogador.movendoEsquerda = false;
+        if (e.key === "ArrowRight" || e.key === "d") x_jogador.movendoDireita = false;
+        if (e.key === "ArrowUp" || e.key === "w") x_jogador.movendoCima = false;
+        if (e.key === "ArrowDown" || e.key === "s") x_jogador.movendoBaixo = false;
+    });
+
+    // --- SISTEMA MULTI-TOUCH ---
+    function gerenciarToques(e) {
+        e.preventDefault();
+        x_jogador.movendoEsquerda = false;
+        x_jogador.movendoDireita = false;
+        x_jogador.movendoCima = false;
+        x_jogador.movendoBaixo = false;
+
+        const rect = canvas.getBoundingClientRect();
+
+        for (let i = 0; i < e.touches.length; i++) {
+            const toque = e.touches[i];
+            const touchX = toque.clientX - rect.left;
+            const touchY = toque.clientY - rect.top;
+
+            if (touchX >= painel.btnEsq.x && touchX <= painel.btnEsq.x + painel.btnEsq.l &&
+                touchY >= painel.btnEsq.y && touchY <= painel.btnEsq.y + painel.btnEsq.a) {
+                x_jogador.movendoEsquerda = true;
+            }
+            if (touchX >= painel.btnDir.x && touchX <= painel.btnDir.x + painel.btnDir.l &&
+                touchY >= painel.btnDir.y && touchY <= painel.btnDir.y + painel.btnDir.a) {
+                x_jogador.movendoDireita = true;
+            }
+            if (touchX >= painel.btnCima.x && touchX <= painel.btnCima.x + painel.btnCima.l &&
+                touchY >= painel.btnCima.y && touchY <= painel.btnCima.y + painel.btnCima.a) {
+                x_jogador.movendoCima = true;
+            }
+            if (touchX >= painel.btnBaixo.x && touchX <= painel.btnBaixo.x + painel.btnBaixo.l &&
+                touchY >= painel.btnBaixo.y && touchY <= painel.btnBaixo.y + painel.btnBaixo.a) {
+                x_jogador.movendoBaixo = true;
+            }
+        }
+    }
+
+    canvas.addEventListener("touchstart", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const toque = e.changedTouches[i];
+            const touchX = toque.clientX - rect.left;
+            const touchY = toque.clientY - rect.top;
+
+            const distConst = Math.sqrt(Math.pow(touchX - painel.btnAtirar.x, 2) + Math.pow(touchY - painel.btnAtirar.y, 2));
+            if (distConst <= painel.btnAtirar.raio) { atirar(); }
+        }
+        gerenciarToques(e);
+    }, { passive: false });
+
+    canvas.addEventListener("touchmove", gerenciarToques, { passive: false });
+    canvas.addEventListener("touchend", gerenciarToques, { passive: false });
+
+    function atirar() {
+        const larguraTiro = 18; const alturaTiro = 36;
+        tiros.push({
+            x: x_jogador.x + (x_jogador.largura / 2) - (larguraTiro / 2),
+            y: x_jogador.y - alturaTiro + 10,
+            largura: larguraTiro, altura: alturaTiro, velocidade: 14
+        });
+        tocarSomTiro();
+    }
+
+    function atualizar() {
+        cenario.y1 += cenario.velocidade;
+        cenario.y2 += cenario.velocidade;
+
+        if (cenario.y1 >= canvas.height) { cenario.y1 = -canvas.height + (cenario.y1 - canvas.height); }
+        if (cenario.y2 >= canvas.height) { cenario.y2 = -canvas.height + (cenario.y2 - canvas.height); }
+
+        if (x_jogador.movendoEsquerda && x_jogador.x > 0) x_jogador.x -= x_jogador.velocidade;
+        if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidade;
+        if (x_jogador.movendoCima && x_jogador.y > 0) x_jogador.y -= x_jogador.velocidade;
+        if (x_jogador.movendoBaixo && x_jogador.y < painel.y - x_jogador.altura) x_jogador.y += x_jogador.velocidade;
+
+        for (let i = tiros.length - 1; i >= 0; i--) {
+            tiros[i].y -= tiros[i].velocidade; 
+            if (tiros[i].y + tiros[i].altura < 0) { tiros.splice(i, 1); }
+        }
+    }
+
+    function desenhar() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (imgFundo.complete) {
+            ctx.drawImage(imgFundo, 0, cenario.y1, canvas.width, canvas.height);
+            ctx.drawImage(imgFundo, 0, cenario.y2, canvas.width, canvas.height);
+        } else {
+            ctx.fillStyle = "#020208";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        tiros.forEach(tiro => {
+            if (imgTiro.complete) { ctx.drawImage(imgTiro, tiro.x, tiro.y, tiro.largura, tiro.altura); }
+        });
+
+        if (imgNave.complete) {
+            ctx.drawImage(imgNave, x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura);
+        } else {
+            ctx.fillStyle = "#00ff64";
+            ctx.fillRect(x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura);
+        }
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+        ctx.font = "bold 28px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        ctx.fillText("▲", painel.btnCima.x + (painel.btnCima.l/2), painel.btnCima.y + (painel.btnCima.a/2));
+        ctx.fillText("◀️", painel.btnEsq.x + (painel.btnEsq.l/2), painel.btnEsq.y + (painel.btnEsq.a/2));
+        ctx.fillText("▶️", painel.btnDir.x + (painel.btnDir.l/2), painel.btnDir.y + (painel.btnDir.a/2));
+        ctx.fillText("▼", painel.btnBaixo.x + (painel.btnBaixo.l/2), painel.btnBaixo.y + (painel.btnBaixo.a/2));
+
+        ctx.fillStyle = "rgba(255, 0, 68, 0.8)";
+        ctx.beginPath();
+        ctx.arc(painel.btnAtirar.x, painel.btnAtirar.y, painel.btnAtirar.raio, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#ff0044";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+
+    function loop() {
+        atualizar();
+        desenhar();
+        requestAnimationFrame(loop);
+    }
+
+    // --- START SEGURO APÓS CARREGAMENTO DO BLOGGER ---
+    function darPartida() {
+        ajustarTela();
+        setTimeout(ajustarTela, 150); // Garante o cálculo pós-renderização
+        loop();
+    }
+
+    window.addEventListener("load", darPartida);
+    window.addEventListener("resize", ajustarTela);
+    window.addEventListener("orientationchange", ajustarTela);
+</script>
+</body>
+</html>
