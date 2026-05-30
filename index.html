@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Star Fighter - Versão GitHub Pages</title>
+    <title>Star Fighter - Ferratech Jogos Edição Especial</title>
     <style>
-        /* Limpa e resgata o espaço caso use em plataformas tipo Blogger */
+        /* Limpeza de elementos extras */
         .bg-photo-overlay, .bg-photo-container, .centered-top-placeholder, 
         .centered-top-container, header, .skip-navigation, .sidebar-container {
             display: none !important; height: 0 !important; padding: 0 !important; margin: 0 !important;
@@ -13,22 +13,27 @@
         .page, .page_body, .centered, .centered-bottom, .main, .main-section {
             padding: 0 !important; margin: 0 !important; max-width: 100% !important; width: 100% !important;
         }
-
-        /* Fixa o container do jogo na tela inteira */
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #000; overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+            font-family: sans-serif;
+        }
         .caixa-jogo-fixa {
             position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            background-color: #000000 !important;
+            top: 0 !important; left: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            background-color: #05050a !important;
             z-index: 999999 !important;
-            overflow: hidden !important;
             display: flex !important;
             justify-content: center !important;
             align-items: center !important;
         }
-        canvas { display: block !important; background-color: #0b0b16 !important; }
+        canvas { 
+            display: block !important; 
+            background-color: #0b0b16 !important;
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -47,98 +52,121 @@
     const imgFundo = new Image(); imgFundo.src = "fundo.jpg"; 
     const imgBatedor = new Image(); imgBatedor.src = "batedor_1.png"; 
     const imgBolaMaldita = new Image(); imgBolaMaldita.src = "bola_maldita.png"; 
+    const imgChefao = new Image(); imgChefao.src = "chefao.png"; 
 
-    // --- SISTEMA DE ÁUDIO À PROVA DE QUEBRAS ---
     function tocarSomTiro() {
-        try {
-            const somTiro = new Audio("til.mp3"); 
-            somTiro.volume = 0.3; 
-            somTiro.play().catch(e => {});
-        } catch (erro) {}
+        try { const som = new Audio("til.mp3"); som.volume = 0.2; som.play().catch(() => {}); } catch (e) {}
     }
-
     function tocarSomExplosao() {
-        try {
-            const somExplosao = new Audio("bum.mp3"); 
-            somExplosao.volume = 0.5; 
-            somExplosao.play().catch(e => {});
-        } catch (erro) {}
+        try { const som = new Audio("bum.mp3"); som.volume = 0.4; som.play().catch(() => {}); } catch (e) {}
     }
 
-    // --- VARIÁVEIS DE ESTADO DO JOGO ---
+    // --- VARIÁVEIS DE ESTADO ---
+    let estadoJogo = "START"; // START, JOGANDO, GAMEOVER, VITORIA
+    let pontuacao = 0;
+    let abates = 0;
+    const META_CHEFÃO = 50; 
+    let bossAtivo = false;
+    let tremorCena = 0; // Controle de tremor de tela
+
     const x_jogador = { 
-        x: 0, y: 0, largura: 60, altura: 60, velocidade: 8,
+        x: 0, y: 0, largura: 55, altura: 55, velocidad: 7,
         movendoEsquerda: false, movendoDireita: false, movendoCima: false, movendoBaixo: false,
-        vidaMax: 10, vida: 10, destruido: false
+        vidaMax: 10, vida: 10, tipoTiro: "NORMAL" // "NORMAL" ou "DUPLO"
     };
 
-    const cenario = { y1: 0, y2: 0, velocidade: 4 };
+    const cenario = { y1: 0, y2: 0, velocidade: 3.5 };
     const tiros = [];
     const batedores = [];
     const bolasMalditas = [];
     const explosoes = []; 
+    const powerups = []; // Array para os itens caídos
 
     let ultimoInimigoCriado = 0;
-    const intervaloInimigos = 1800; 
+    let intervaloInimigos = 1600; 
 
+    const chefao = {
+        x: 0, y: -120, largura: 130, altura: 100, velX: 3.5, velY: 1.5,
+        vidaMax: 50, vida: 50, ultTiro: 0
+    };
+
+    // Painel de botões virtuais
     const painel = {
-        y: 0, altura: 160,
-        btnEsq: { x: 15, y: 0, l: 55, a: 55 },
-        btnDir: { x: 125, y: 0, l: 55, a: 55 },
-        btnCima: { x: 70, y: 0, l: 55, a: 55 },
-        btnBaixo: { x: 70, y: 0, l: 55, a: 55 },
-        btnAtirar: { x: 0, y: 0, raio: 45 } 
+        y: 0, altura: 150,
+        btnEsq: { x: 15, y: 0, l: 50, a: 50 },
+        btnDir: { x: 115, y: 0, l: 50, a: 50 },
+        btnCima: { x: 65, y: 0, l: 50, a: 50 },
+        btnBaixo: { x: 65, y: 0, l: 50, a: 50 },
+        btnAtirar: { x: 0, y: 0, raio: 40 },
+        btnIniciar: { x: 0, y: 0, l: 180, a: 50 } // Botão na tela de Início
     };
 
     function configurarPainel() {
         painel.y = canvas.height - painel.altura;
         cenario.y2 = -canvas.height;
-
         painel.btnCima.y = painel.y + 10;
-        painel.btnEsq.y = painel.y + 55;
-        painel.btnDir.y = painel.y + 55;
-        painel.btnBaixo.y = painel.y + 100;
-
-        painel.btnAtirar.x = canvas.width - painel.btnAtirar.raio - 25;
+        painel.btnEsq.y = painel.y + 50;
+        painel.btnDir.y = painel.y + 50;
+        painel.btnBaixo.y = painel.y + 90;
+        painel.btnAtirar.x = canvas.width - painel.btnAtirar.raio - 20;
         painel.btnAtirar.y = painel.y + (painel.altura / 2);
 
-        // Define posição inicial caso esteja zerado
-        if (x_jogador.x === 0 && x_jogador.y === 0) {
+        // Posiciona botão iniciar centralizado
+        painel.btnIniciar.x = canvas.width / 2 - painel.btnIniciar.l / 2;
+        painel.btnIniciar.y = canvas.height / 2 + 60;
+
+        if (x_jogador.x === 0 || x_jogador.y === 0) {
             x_jogador.x = canvas.width / 2 - x_jogador.largura / 2;
-            x_jogador.y = painel.y - x_jogador.altura - 20;
+            x_jogador.y = painel.y - x_jogador.altura - 30;
         }
     }
 
     function ajustarTela() {
-        const larguraReal = window.innerWidth || 360;
-        const alturaReal = window.innerHeight || 640;
-        canvas.height = alturaReal;
-        canvas.width = alturaReal * (9 / 16);
-        if (canvas.width > larguraReal) {
-            canvas.width = larguraReal;
-            canvas.height = larguraReal * (16 / 9);
+        let larguraJanela = window.innerWidth;
+        let alturaJanela = window.innerHeight;
+        canvas.height = alturaJanela;
+        canvas.width = alturaJanela * (9 / 16);
+        if (canvas.width > larguraJanela) {
+            canvas.width = larguraJanela;
+            canvas.height = larguraJanela * (16 / 9);
         }
         configurarPainel();
     }
 
-    function verificarColisao(obj1, obj2) {
-        return obj1.x < obj2.x + obj2.largura &&
-               obj1.x + obj1.largura > obj2.x &&
-               obj1.y < obj2.y + obj2.altura &&
-               obj1.y + obj1.altura > obj2.y;
+    function reiniciarJogo() {
+        pontuacao = 0; abates = 0; bossAtivo = false; tremorCena = 0;
+        x_jogador.vida = x_jogador.vidaMax; x_jogador.tipoTiro = "NORMAL";
+        tiros.length = 0; batedores.length = 0; bolasMalditas.length = 0;
+        explosoes.length = 0; powerups.length = 0;
+        chefao.vida = chefao.vidaMax; chefao.y = -120;
+        x_jogador.x = canvas.width / 2 - x_jogador.largura / 2;
+        x_jogador.y = painel.y - x_jogador.altura - 30;
+        estadoJogo = "JOGANDO";
     }
 
-    function instanciarExplosao(x, y, larg, alt) {
-        explosoes.push({
-            x: x, y: y, largura: larg, altura: alt,
-            vidaMaxima: 30, vidaAtual: 30
-        });
+    function verificarColisao(a, b) {
+        return a.x < b.x + b.largura && a.x + a.largura > b.x &&
+               a.y < b.y + b.altura && a.y + a.altura > b.y;
+    }
+
+    function instanciarExplosao(x, y, l, a) {
+        explosoes.push({ x, y, largura: l, altura: a, vidaMax: 25, vida: 25 });
         tocarSomExplosao();
     }
 
-    // --- CONTROLES (TECLADO) ---
-    window.addEventListener("keydown", (e) => {
-        if (x_jogador.destruido) return;
+    function tentarDropPowerup(x, y) {
+        if (Math.random() < 0.35) { // 35% de chance de cair item
+            let tipo = Math.random() < 0.5 ? "TIRO_DUPLO" : "VIDA";
+            powerups.push({ x, y, largura: 25, altura: 25, vel: 2.5, tipo: tipo });
+        }
+    }
+
+    // --- CONTROLES TECLADO ---
+    window.addEventListener("keydown", e => {
+        if (estadoJogo === "START" && (e.key === " " || e.key === "Enter")) { reiniciarJogo(); return; }
+        if ((estadoJogo === "GAMEOVER" || estadoJogo === "VITORIA") && (e.key === " " || e.key === "Enter")) { estadoJogo = "START"; return; }
+        if (estadoJogo !== "JOGANDO") return;
+
         if (e.key === "ArrowLeft" || e.key === "a") x_jogador.movendoEsquerda = true;
         if (e.key === "ArrowRight" || e.key === "d") x_jogador.movendoDireita = true;
         if (e.key === "ArrowUp" || e.key === "w") x_jogador.movendoCima = true;
@@ -146,208 +174,339 @@
         if (e.key === " " || e.key === "Enter") atirar();
     });
 
-    window.addEventListener("keyup", (e) => {
+    window.addEventListener("keyup", e => {
         if (e.key === "ArrowLeft" || e.key === "a") x_jogador.movendoEsquerda = false;
         if (e.key === "ArrowRight" || e.key === "d") x_jogador.movendoDireita = false;
         if (e.key === "ArrowUp" || e.key === "w") x_jogador.movendoCima = false;
         if (e.key === "ArrowDown" || e.key === "s") x_jogador.movendoBaixo = false;
     });
 
-    // --- CONTROLES (TOQUE / MOBILE) ---
-    function gerenciarToques(e) {
-        if (x_jogador.destruido) return;
+    // --- CONTROLES TOQUE ---
+    function processarToques(e) {
+        if (estadoJogo !== "JOGANDO") return;
         e.preventDefault();
         x_jogador.movendoEsquerda = false; x_jogador.movendoDireita = false;
         x_jogador.movendoCima = false; x_jogador.movendoBaixo = false;
+
         const rect = canvas.getBoundingClientRect();
         for (let i = 0; i < e.touches.length; i++) {
-            const toque = e.touches[i];
-            const touchX = toque.clientX - rect.left;
-            const touchY = toque.clientY - rect.top;
+            const t = e.touches[i];
+            const tx = t.clientX - rect.left;
+            const ty = t.clientY - rect.top;
 
-            if (touchX >= painel.btnEsq.x && touchX <= painel.btnEsq.x + painel.btnEsq.l && touchY >= painel.btnEsq.y && touchY <= painel.btnEsq.y + painel.btnEsq.a) x_jogador.movendoEsquerda = true;
-            if (touchX >= painel.btnDir.x && touchX <= painel.btnDir.x + painel.btnDir.l && touchY >= painel.btnDir.y && touchY <= painel.btnDir.y + painel.btnDir.a) x_jogador.movendoDireita = true;
-            if (touchX >= painel.btnCima.x && touchX <= painel.btnCima.x + painel.btnCima.l && touchY >= painel.btnCima.y && touchY <= painel.btnCima.y + painel.btnCima.a) x_jogador.movendoCima = true;
-            if (touchX >= painel.btnBaixo.x && touchX <= painel.btnBaixo.x + painel.btnBaixo.l && touchY >= painel.btnBaixo.y && touchY <= painel.btnBaixo.y + painel.btnBaixo.a) x_jogador.movendoBaixo = true;
+            if (tx >= painel.btnEsq.x && tx <= painel.btnEsq.x + painel.btnEsq.l && ty >= painel.btnEsq.y && ty <= painel.btnEsq.y + painel.btnEsq.a) x_jogador.movendoEsquerda = true;
+            if (tx >= painel.btnDir.x && tx <= painel.btnDir.x + painel.btnDir.l && ty >= painel.btnDir.y && ty <= painel.btnDir.y + painel.btnDir.a) x_jogador.movendoDireita = true;
+            if (tx >= painel.btnCima.x && tx <= painel.btnCima.x + painel.btnCima.l && ty >= painel.btnCima.y && ty <= painel.btnCima.y + painel.btnCima.a) x_jogador.movendoCima = true;
+            if (tx >= painel.btnBaixo.x && tx <= painel.btnBaixo.x + painel.btnBaixo.l && ty >= painel.btnBaixo.y && ty <= painel.btnBaixo.y + painel.btnBaixo.a) x_jogador.movendoBaixo = true;
         }
     }
 
-    canvas.addEventListener("touchstart", (e) => {
-        if (x_jogador.destruido) return;
+    canvas.addEventListener("touchstart", e => {
         const rect = canvas.getBoundingClientRect();
-        for (let i = 0; i < e.changedTouches.length; i++) {
-            const toque = e.changedTouches[i];
-            const touchX = toque.clientX - rect.left;
-            const touchY = toque.clientY - rect.top;
-            if (Math.sqrt(Math.pow(touchX - painel.btnAtirar.x, 2) + Math.pow(touchY - painel.btnAtirar.y, 2)) <= painel.btnAtirar.raio) atirar();
+        const t = e.changedTouches[0];
+        const tx = t.clientX - rect.left;
+        const ty = t.clientY - rect.top;
+
+        if (estadoJogo === "START") {
+            if (tx >= painel.btnIniciar.x && tx <= painel.btnIniciar.x + painel.btnIniciar.l && ty >= painel.btnIniciar.y && ty <= painel.btnIniciar.y + painel.btnIniciar.a) {
+                reiniciarJogo();
+            }
+            return;
         }
-        gerenciarToques(e);
+        if (estadoJogo === "GAMEOVER" || estadoJogo === "VITORIA") {
+            estadoJogo = "START";
+            return;
+        }
+
+        let d = Math.sqrt(Math.pow(tx - painel.btnAtirar.x, 2) + Math.pow(ty - painel.btnAtirar.y, 2));
+        if (d <= painel.btnAtirar.raio) atirar();
+
+        processarToques(e);
     }, { passive: false });
 
-    canvas.addEventListener("touchmove", gerenciarToques, { passive: false });
-    canvas.addEventListener("touchend", gerenciarToques, { passive: false });
+    canvas.addEventListener("touchmove", processarToques, { passive: false });
+    canvas.addEventListener("touchend", processarToques, { passive: false });
 
     function atirar() {
-        if (x_jogador.destruido) return;
-        const larguraTiro = 18; const alturaTiro = 36;
-        tiros.push({
-            x: x_jogador.x + (x_jogador.largura / 2) - (larguraTiro / 2),
-            y: x_jogador.y - alturaTiro + 10,
-            largura: larguraTiro, altura: alturaTiro, velocidade: 14
-        });
+        if (estadoJogo !== "JOGANDO") return;
+        if (x_jogador.tipoTiro === "DUPLO") {
+            tiros.push({ x: x_jogador.x + 5, y: x_jogador.y - 25, largura: 10, height: 25, vel: 13 });
+            tiros.push({ x: x_jogador.x + x_jogador.largura - 15, y: x_jogador.y - 25, largura: 10, height: 25, vel: 13 });
+        } else {
+            tiros.push({ x: x_jogador.x + x_jogador.largura/2 - 5, y: x_jogador.y - 25, largura: 10, height: 25, vel: 12 });
+        }
         tocarSomTiro();
     }
 
-    function spawnInimigo(timestamp) {
-        if (x_jogador.destruido) return;
-        if (timestamp - ultimoInimigoCriado > intervaloInimigos) {
-            const largInimigo = 55; const altInimigo = 55;
-            const xAleatorio = Math.random() * (canvas.width - largInimigo);
-            batedores.push({
-                x: xAleatorio, y: -altInimigo, largura: largInimigo, altura: altInimigo,
-                velocidade: 3.5, ultimoTiro: timestamp, cadenciaTiro: 1200 
-            });
-            ultimoInimigoCriado = timestamp;
-        }
-    }
-
-    // --- LÓGICA DO JOGO ---
-    function atualizar(timestamp) {
+    // --- MÁQUINA DE LÓGICA ---
+    function atualizar(ts) {
+        // Movimentação do fundo contínua independente do estado
         cenario.y1 += cenario.velocidade; cenario.y2 += cenario.velocidade;
         if (cenario.y1 >= canvas.height) cenario.y1 = -canvas.height;
         if (cenario.y2 >= canvas.height) cenario.y2 = -canvas.height;
 
-        if (!x_jogador.destruido) {
-            if (x_jogador.movendoEsquerda && x_jogador.x > 0) x_jogador.x -= x_jogador.velocidade;
-            if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidade;
-            if (x_jogador.movendoCima && x_jogador.y > 0) x_jogador.y -= x_jogador.velocidade;
-            if (x_jogador.movendoBaixo && x_jogador.y < painel.y - x_jogador.altura) x_jogador.y += x_jogador.velocidade;
+        if (estadoJogo !== "JOGANDO") return;
+
+        // Diminui o tremor de tela progressivamente
+        if (tremorCena > 0) tremorCena -= 0.5;
+
+        // Ondas de Inimigos Dinâmicas com base nos abates
+        if (abates < 15) { intervaloInimigos = 1600; } 
+        else if (abates < 35) { intervaloInimigos = 1100; cenario.velocidade = 5; } 
+        else if (abates < META_CHEFÃO) { intervaloInimigos = 750; }
+
+        if (x_jogador.movendoEsquerda && x_jogador.x > 0) x_jogador.x -= x_jogador.velocidad;
+        if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidad;
+        if (x_jogador.movendoCima && x_jogador.y > 0) x_jogador.y -= x_jogador.velocidad;
+        if (x_jogador.movendoBaixo && x_jogador.y < painel.y - x_jogador.altura) x_jogador.y += x_jogador.velocidad;
+
+        if (abates >= META_CHEFÃO && !bossAtivo) {
+            bossAtivo = true;
+            chefao.x = canvas.width / 2 - chefao.largura / 2;
         }
 
+        // Atualização de Power-ups
+        for (let i = powerups.length - 1; i >= 0; i--) {
+            powerups[i].y += powerups[i].vel;
+            if (verificarColisao(powerups[i], x_jogador)) {
+                if (powerups[i].tipo === "TIRO_DUPLO") x_jogador.tipoTiro = "DUPLO";
+                if (powerups[i].tipo === "VIDA") x_jogador.vida = Math.min(x_jogador.vidaMax, x_jogador.vida + 3);
+                powerups.splice(i, 1);
+                continue;
+            }
+            if (powerups[i] && powerups[i].y > painel.y) powerups.splice(i, 1);
+        }
+
+        // Balas do Jogador
         for (let i = tiros.length - 1; i >= 0; i--) {
-            tiros[i].y -= tiros[i].velocidade; 
-            if (tiros[i].y + tiros[i].altura < 0) tiros.splice(i, 1);
-        }
+            tiros[i].y -= tiros[i].vel;
 
-        spawnInimigo(timestamp);
-
-        for (let i = batedores.length - 1; i >= 0; i--) {
-            const inimigo = batedores[i];
-            inimigo.y += inimigo.velocidade; 
-
-            if (timestamp - inimigo.ultimoTiro > inimigo.cadenciaTiro && inimigo.y < painel.y) {
-                const largBola = 16; const altBola = 16;
-                bolasMalditas.push({
-                    x: inimigo.x + (inimigo.largura / 2) - (largBola / 2),
-                    y: inimigo.y + inimigo.altura, largura: largBola, altura: altBola, velocidade: 6 
-                });
-                inimigo.ultimoTiro = timestamp;
-            }
-
-            for (let j = tiros.length - 1; j >= 0; j--) {
-                if (verificarColisao(tiros[j], inimigo)) {
-                    instanciarExplosao(inimigo.x, inimigo.y, inimigo.largura, inimigo.altura);
-                    batedores.splice(i, 1);
-                    tiros.splice(j, 1);
-                    break;
-                }
-            }
-
-            if (inimigo && inimigo.y > painel.y) batedores.splice(i, 1);
-        }
-
-        for (let j = bolasMalditas.length - 1; j >= 0; j--) {
-            const bola = bolasMalditas[j];
-            bola.y += bola.velocidade; 
-
-            if (!x_jogador.destruido && verificarColisao(bola, x_jogador)) {
-                instanciarExplosao(bola.x, bola.y - 10, 30, 30);
-                bolasMalditas.splice(j, 1);
-                
-                x_jogador.vida--; 
-                if (x_jogador.vida <= 0) {
-                    x_jogador.vida = 0;
-                    x_jogador.destruido = true;
-                    instanciarExplosao(x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura);
+            if (bossAtivo && verificarColisao(tiros[i], chefao) && chefao.y > 0) {
+                instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20);
+                tiros.splice(i, 1);
+                chefao.vida--;
+                pontuacao += 50;
+                if (chefao.vida <= 0) {
+                    instanciarExplosao(chefao.x + chefao.largura/2, chefao.y + chefao.altura/2, chefao.largura, chefao.altura);
+                    pontuacao += 5000;
+                    estadoJogo = "VITORIA";
                 }
                 continue;
             }
-
-            if (bola.y > painel.y) bolasMalditas.splice(j, 1);
+            if (tiros[i] && tiros[i].y + 25 < 0) tiros.splice(i, 1);
         }
 
-        for (let k = explosoes.length - 1; k >= 0; k--) {
-            explosoes[k].vidaAtual--;
-            if (explosoes[k].vidaAtual <= 0) explosoes.splice(k, 1);
+        // Lógica do Boss
+        if (bossAtivo) {
+            if (chefao.y < 60) chefao.y += chefao.velY;
+            else {
+                chefao.x += chefao.velX;
+                if (chefao.x <= 10 || chefao.x >= canvas.width - chefao.largura - 10) chefao.velX *= -1;
+            }
+            if (ts - chefao.ultTiro > 850 && chefao.y > 0) {
+                bolasMalditas.push({ x: chefao.x + 20, y: chefao.y + chefao.altura, largura: 16, altura: 16, vel: 6.5 });
+                bolasMalditas.push({ x: chefao.x + chefao.largura - 36, y: chefao.y + chefao.altura, largura: 16, altura: 16, vel: 6.5 });
+                chefao.ultTiro = ts;
+            }
+        }
+
+        // Nascimentos Normais
+        if (!bossAtivo && ts - ultimoInimigoCriado > intervaloInimigos) {
+            batedores.push({ x: Math.random() * (canvas.width - 45), y: -45, largura: 45, altura: 45, vel: 3.5, ultTiro: ts });
+            ultimoInimigoCriado = ts;
+        }
+
+        // Movimento Batedores
+        for (let i = batedores.length - 1; i >= 0; i--) {
+            let b = batedores[i]; b.y += b.vel;
+            if (ts - b.ultTiro > 1200 && b.y < painel.y) {
+                bolasMalditas.push({ x: b.x + b.largura/2 - 7, y: b.y + b.altura, largura: 14, altura: 14, vel: 5.5 });
+                b.ultTiro = ts;
+            }
+            for (let j = tiros.length - 1; j >= 0; j--) {
+                if (verificarColisao(tiros[j], b)) {
+                    instanciarExplosao(b.x, b.y, b.largura, b.altura);
+                    tentarDropPowerup(b.x, b.y);
+                    batedores.splice(i, 1); tiros.splice(j, 1);
+                    abates++;
+                    pontuacao += 150;
+                    break;
+                }
+            }
+            if (b && b.y > painel.y) batedores.splice(i, 1);
+        }
+
+        // Tiros Inimigos Caindo
+        for (let i = bolasMalditas.length - 1; i >= 0; i--) {
+            let bm = bolasMalditas[i]; bm.y += bm.vel;
+            if (verificarColisao(bm, x_jogador)) {
+                instanciarExplosao(bm.x, bm.y, 20, 20);
+                bolasMalditas.splice(i, 1);
+                x_jogador.vida--;
+                tremorCena = 10; // Sacode a tela
+                if (x_jogador.vida <= 0) { 
+                    x_jogador.vida = 0;
+                    instanciarExplosao(x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura);
+                    estadoJogo = "GAMEOVER";
+                }
+                continue;
+            }
+            if (bm.y > painel.y) bolasMalditas.splice(i, 1);
+        }
+
+        // Animação de Explosão
+        for (let i = explosoes.length - 1; i >= 0; i--) {
+            explosoes[i].vida--;
+            if (explosoes[i].vida <= 0) explosoes.splice(i, 1);
         }
     }
 
-    // --- GRÁFICOS DO JOGO ---
+    // --- ENGINE DE ARTE ---
     function desenhar() {
-        ctx.fillStyle = "#0b0b16";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        // Executa efeito tremor de tela caso ativo
+        if (tremorCena > 0) {
+            let dx = (Math.random() - 0.5) * tremorCena;
+            let dy = (Math.random() - 0.5) * tremorCena;
+            ctx.translate(dx, dy);
+        }
 
-        // Bloco protetor: se a imagem falhar por 404, desenha um fundo escuro padrão
+        ctx.fillStyle = "#090912"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Cenário Estelar
         if (imgFundo.complete && imgFundo.width > 0) {
             ctx.drawImage(imgFundo, 0, cenario.y1, canvas.width, canvas.height);
             ctx.drawImage(imgFundo, 0, cenario.y2, canvas.width, canvas.height);
-        } else {
-            ctx.fillStyle = "#0c0c1e"; ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        tiros.forEach(tiro => {
-            if (imgTiro.complete && imgTiro.width > 0) { ctx.drawImage(imgTiro, tiro.x, tiro.y, tiro.largura, tiro.altura); } 
-            else { ctx.fillStyle = "#00ffcc"; ctx.fillRect(tiro.x, tiro.y, tiro.largura, tiro.altura); }
+        // Desenhar Itens Caídos (Power-ups)
+        powerups.forEach(p => {
+            ctx.fillStyle = p.tipo === "TIRO_DUPLO" ? "#00d2ff" : "#00ff66";
+            ctx.beginPath(); ctx.arc(p.x + 12, p.y + 12, 11, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(p.tipo === "TIRO_DUPLO" ? "D" : "V", p.x + 12, p.y + 12);
         });
 
-        batedores.forEach(inimigo => {
-            if (imgBatedor.complete && imgBatedor.width > 0) { ctx.drawImage(imgBatedor, inimigo.x, inimigo.y, inimigo.largura, inimigo.altura); } 
-            else { ctx.fillStyle = "#ff0033"; ctx.fillRect(inimigo.x, inimigo.y, inimigo.largura, inimigo.altura); }
+        tiros.forEach(t => {
+            if (imgTiro.complete && imgTiro.width > 0) ctx.drawImage(imgTiro, t.x, t.y, t.largura, 25);
+            else { ctx.fillStyle = "#00ffcc"; ctx.fillRect(t.x, t.y, t.largura, 25); }
         });
 
-        bolasMalditas.forEach(bola => {
-            if (imgBolaMaldita.complete && imgBolaMaldita.width > 0) { ctx.drawImage(imgBolaMaldita, bola.x, bola.y, bola.largura, bola.altura); } 
-            else { ctx.fillStyle = "#ffcc00"; ctx.beginPath(); ctx.arc(bola.x + 8, bola.y + 8, 8, 0, Math.PI * 2); ctx.fill(); }
+        batedores.forEach(b => {
+            if (imgBatedor.complete && imgBatedor.width > 0) ctx.drawImage(imgBatedor, b.x, b.y, b.largura, b.altura);
+            else { ctx.fillStyle = "#ff2244"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
         });
 
-        if (!x_jogador.destruido) {
-            if (imgNave.complete && imgNave.width > 0) { ctx.drawImage(imgNave, x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura); } 
-            else { ctx.fillStyle = "#00ff64"; ctx.fillRect(x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura); }
+        // Desenho Imponente do Boss
+        if (bossAtivo && estadoJogo === "JOGANDO") {
+            if (imgChefao.complete && imgChefao.width > 0) {
+                ctx.drawImage(imgChefao, chefao.x, chefao.y, chefao.largura, chefao.altura);
+            } else {
+                ctx.fillStyle = "#990022"; ctx.fillRect(chefao.x, chefao.y, chefao.largura, chefao.altura);
+                ctx.fillStyle = "#ff0044"; ctx.fillRect(chefao.x + 20, chefao.y + chefao.altura - 15, chefao.largura - 40, 15);
+            }
+            // HUD de vida do Boss
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(canvas.width/2 - 100, 15, 200, 8);
+            ctx.fillStyle = "#ff0044"; ctx.fillRect(canvas.width/2 - 100, 15, (chefao.vida / chefao.vidaMax) * 200, 8);
         }
 
-        explosoes.forEach(exp => {
-            ctx.save(); ctx.globalAlpha = exp.vidaAtual / exp.vidaMaxima;
-            let raioX = (exp.largura / 2) * (1.5 - (exp.vidaAtual / exp.vidaMaxima));
-            if(raioX <= 0) raioX = 1;
-            ctx.fillStyle = "#ff5500"; ctx.beginPath(); 
-            ctx.arc(exp.x + exp.largura/2, exp.y + exp.altura/2, raioX * 1.5, 0, Math.PI * 2); ctx.fill();
-            ctx.restore();
+        bolasMalditas.forEach(bm => {
+            if (imgBolaMaldita.complete && imgBolaMaldita.width > 0) ctx.drawImage(imgBolaMaldita, bm.x, bm.y, bm.largura, bm.altura);
+            else { ctx.fillStyle = "#ffcc00"; ctx.beginPath(); ctx.arc(bm.x+7, bm.y+7, 7, 0, Math.PI*2); ctx.fill(); }
         });
 
-        // --- BARRA DE VIDA DOS 10 GOLPES ---
-        let corBarra = "#00d2ff"; 
-        if (x_jogador.vida <= 6 && x_jogador.vida > 3) corBarra = "#ffcc00"; 
-        else if (x_jogador.vida <= 3) corBarra = "#ff0033"; 
+        if (estadoJogo === "JOGANDO") {
+            if (imgNave.complete && imgNave.width > 0) ctx.drawImage(imgNave, x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura);
+            else { ctx.fillStyle = "#00ff55"; ctx.fillRect(x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura); }
+        }
 
-        ctx.fillStyle = "rgba(255, 255, 255, 0.15)"; ctx.fillRect(20, 20, 140, 14);
+        explosoes.forEach(ex => {
+            ctx.fillStyle = "rgba(255, 90, 0, " + (ex.vida / ex.vidaMax) + ")";
+            ctx.beginPath(); ctx.arc(ex.x + ex.largura/2, ex.y + ex.altura/2, ex.largura * 1.5, 0, Math.PI*2); ctx.fill();
+        });
+
+        // HUD DO JOGADOR
+        ctx.fillStyle = "rgba(255, 255, 255, 0.12)"; ctx.fillRect(25, 25, 120, 12);
         if (x_jogador.vida > 0) {
-            ctx.fillStyle = corBarra; ctx.fillRect(20, 20, (x_jogador.vida / x_jogador.vidaMax) * 140, 14);
+            ctx.fillStyle = x_jogador.vida > 4 ? "#00d2ff" : "#ff2244";
+            ctx.fillRect(25, 25, (x_jogador.vida / x_jogador.vidaMax) * 120, 12);
         }
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.3)"; ctx.strokeRect(20, 20, 140, 14);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.35)"; ctx.strokeRect(25, 25, 120, 12);
 
-        if (x_jogador.destruido) {
-            ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#ff0033"; ctx.font = "bold 32px sans-serif"; ctx.textAlign = "center";
-            ctx.fillText("FIM DE JOGO", canvas.width / 2, canvas.height / 2);
+        ctx.fillStyle = "#fff"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "left";
+        ctx.fillText("SCORE: " + pontuacao, 25, 52);
+        ctx.font = "11px sans-serif";
+        ctx.fillText("ALVOS: " + abates + (bossAtivo ? " [BOSS]" : " / " + META_CHEFÃO), 25, 68);
+
+        // CONTROLES TÁTEIS (SÓ APARECEM JOGANDO)
+        if (estadoJogo === "JOGANDO") {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.22)"; ctx.font = "24px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText("▲", painel.btnCima.x + 25, painel.btnCima.y + 25);
+            ctx.fillText("◀️", painel.btnEsq.x + 25, painel.btnEsq.y + 25);
+            ctx.fillText("▶️", painel.btnDir.x + 25, painel.btnDir.y + 25);
+            ctx.fillText("▼", painel.btnBaixo.x + 25, painel.btnBaixo.y + 25);
+
+            ctx.fillStyle = "rgba(255, 0, 70, 0.75)"; ctx.beginPath(); ctx.arc(painel.btnAtirar.x, painel.btnAtirar.y, painel.btnAtirar.raio, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = "rgba(255, 0, 70, 0.9)"; ctx.lineWidth = 2; ctx.stroke();
         }
 
-        // Controles virtuais
-        ctx.fillStyle = "rgba(255, 255, 255, 0.2)"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText("▲", painel.btnCima.x + 27, painel.btnCima.y + 27);
-        ctx.fillText("◀️", painel.btnEsq.x + 27, painel.btnEsq.y + 27);
-        ctx.fillText("▶️", painel.btnDir.x + 27, painel.btnDir.y + 27);
-        ctx.fillText("▼", painel.btnBaixo.x + 27, painel.btnBaixo.y + 27);
-        ctx.fillStyle = "rgba(255, 0, 68, 0.8)"; ctx.beginPath(); ctx.arc(painel.btnAtirar.x, painel.btnAtirar.y, painel.btnAtirar.raio, 0, Math.PI * 2); ctx.fill();
+        // --- PAINÉIS DE MARKETING FERRATECH JOGOS ---
+        
+        // 1. TELA DE INÍCIO (START)
+        if (estadoJogo === "START") {
+            ctx.fillStyle = "rgba(5, 5, 15, 0.9)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#00d2ff"; ctx.font = "bold 32px sans-serif";
+            ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 - 60);
+            
+            ctx.fillStyle = "#ffffff"; ctx.font = "14px sans-serif";
+            ctx.fillText("Apresenta: Star Fighter", canvas.width / 2, canvas.height / 2 - 25);
+
+            // Desenho do botão iniciar
+            ctx.fillStyle = "#00ffcc"; ctx.fillRect(painel.btnIniciar.x, painel.btnIniciar.y, painel.btnIniciar.l, painel.btnIniciar.a);
+            ctx.fillStyle = "#000"; ctx.font = "bold 16px sans-serif"; ctx.textBaseline = "middle";
+            ctx.fillText("INICIAR JOGO", canvas.width / 2, painel.btnIniciar.y + 25);
+        }
+
+        // 2. TELA DE GAME OVER
+        if (estadoJogo === "GAMEOVER") {
+            ctx.fillStyle = "rgba(15, 0, 5, 0.92)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            
+            ctx.fillStyle = "#ff2244"; ctx.font = "bold 36px sans-serif";
+            ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 50);
+            
+            ctx.fillStyle = "#ffffff"; ctx.font = "16px sans-serif";
+            ctx.fillText("Pontuação Final: " + pontuacao, canvas.width / 2, canvas.height / 2);
+
+            // Merchandising de Fechamento
+            ctx.fillStyle = "rgba(0, 210, 255, 0.3)"; ctx.font = "12px sans-serif";
+            ctx.fillText("Desenvolvido por FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 + 60);
+            ctx.fillStyle = "#888"; ctx.font = "11px sans-serif";
+            ctx.fillText("[Toque na tela para reiniciar]", canvas.width / 2, canvas.height / 2 + 100);
+        }
+
+        // 3. TELA DE VITÓRIA
+        if (estadoJogo === "VITORIA") {
+            ctx.fillStyle = "rgba(5, 25, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            
+            ctx.fillStyle = "#00ffcc"; ctx.font = "bold 38px sans-serif";
+            ctx.fillText("VITÓRIA!", canvas.width / 2, canvas.height / 2 - 70);
+            
+            ctx.fillStyle = "#ffffff"; ctx.font = "18px sans-serif";
+            ctx.fillText("Você salvou o universo!", canvas.width / 2, canvas.height / 2 - 20);
+            ctx.fillText("Placar Final: " + pontuacao, canvas.width / 2, canvas.height / 2 + 15);
+
+            // Assinatura Ferratech de Sucesso
+            ctx.fillStyle = "#00d2ff"; ctx.font = "bold 16px sans-serif";
+            ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 + 80);
+            ctx.fillStyle = "#888"; ctx.font = "11px sans-serif";
+            ctx.fillText("[Toque na tela para o menu]", canvas.width / 2, canvas.height / 2 + 120);
+        }
+
+        ctx.restore();
     }
 
     function loop(timestamp) {
@@ -356,13 +515,10 @@
         requestAnimationFrame(loop);
     }
 
-    function iniciar() {
-        ajustarTela();
-        requestAnimationFrame(loop);
-    }
-
-    window.addEventListener("load", iniciar);
+    ajustarTela();
     window.addEventListener("resize", ajustarTela);
+    window.addEventListener("orientationchange", ajustarTela);
+    requestAnimationFrame(loop);
 </script>
 </body>
 </html>
