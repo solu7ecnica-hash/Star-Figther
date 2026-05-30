@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Star Fighter</title>
+    <title>Star Fighter - Versão GitHub Pages</title>
     <style>
-        /* Força o ralo compressor nas estruturas do tema do Blogger */
+        /* Limpa e resgata o espaço caso use em plataformas tipo Blogger */
         .bg-photo-overlay, .bg-photo-container, .centered-top-placeholder, 
         .centered-top-container, header, .skip-navigation, .sidebar-container {
             display: none !important; height: 0 !important; padding: 0 !important; margin: 0 !important;
@@ -14,7 +14,7 @@
             padding: 0 !important; margin: 0 !important; max-width: 100% !important; width: 100% !important;
         }
 
-        /* Enquadra o jogo em tela cheia fixa por cima de tudo */
+        /* Fixa o container do jogo na tela inteira */
         .caixa-jogo-fixa {
             position: fixed !important;
             top: 0 !important;
@@ -28,7 +28,7 @@
             justify-content: center !important;
             align-items: center !important;
         }
-        canvas { display: block !important; }
+        canvas { display: block !important; background-color: #0b0b16 !important; }
     </style>
 </head>
 <body>
@@ -42,31 +42,44 @@
     const ctx = canvas.getContext("2d");
 
     // --- CARREGAMENTO DE ASSETS ---
-    const imgNave = new Image();
-    imgNave.src = "nave.png"; 
+    const imgNave = new Image(); imgNave.src = "nave.png"; 
+    const imgTiro = new Image(); imgTiro.src = "gosma_verde.png"; 
+    const imgFundo = new Image(); imgFundo.src = "fundo.jpg"; 
+    const imgBatedor = new Image(); imgBatedor.src = "batedor_1.png"; 
+    const imgBolaMaldita = new Image(); imgBolaMaldita.src = "bola_maldita.png"; 
 
-    const imgTiro = new Image();
-    imgTiro.src = "gosma_verde.png"; 
-
-    const imgFundo = new Image();
-    imgFundo.src = "https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?q=80&w=640&auto=format&fit=crop";
-
+    // --- SISTEMA DE ÁUDIO À PROVA DE QUEBRAS ---
     function tocarSomTiro() {
         try {
-            const somTiro = new Audio("til.mp3");
-            somTiro.volume = 0.4; 
+            const somTiro = new Audio("til.mp3"); 
+            somTiro.volume = 0.3; 
             somTiro.play().catch(e => {});
         } catch (erro) {}
     }
 
-    const jugador = { 
+    function tocarSomExplosao() {
+        try {
+            const somExplosao = new Audio("bum.mp3"); 
+            somExplosao.volume = 0.5; 
+            somExplosao.play().catch(e => {});
+        } catch (erro) {}
+    }
+
+    // --- VARIÁVEIS DE ESTADO DO JOGO ---
+    const x_jogador = { 
         x: 0, y: 0, largura: 60, altura: 60, velocidade: 8,
-        movendoEsquerda: false, movendoDireita: false, movendoCima: false, movendoBaixo: false
+        movendoEsquerda: false, movendoDireita: false, movendoCima: false, movendoBaixo: false,
+        vidaMax: 10, vida: 10, destruido: false
     };
-    const x_jogador = jugador;
 
     const cenario = { y1: 0, y2: 0, velocidade: 4 };
     const tiros = [];
+    const batedores = [];
+    const bolasMalditas = [];
+    const explosoes = []; 
+
+    let ultimoInimigoCriado = 0;
+    const intervaloInimigos = 1800; 
 
     const painel = {
         y: 0, altura: 160,
@@ -89,27 +102,43 @@
         painel.btnAtirar.x = canvas.width - painel.btnAtirar.raio - 25;
         painel.btnAtirar.y = painel.y + (painel.altura / 2);
 
-        x_jogador.x = canvas.width / 2 - x_jogador.largura / 2;
-        x_jogador.y = painel.y - x_jogador.altura - 20;
+        // Define posição inicial caso esteja zerado
+        if (x_jogador.x === 0 && x_jogador.y === 0) {
+            x_jogador.x = canvas.width / 2 - x_jogador.largura / 2;
+            x_jogador.y = painel.y - x_jogador.altura - 20;
+        }
     }
 
     function ajustarTela() {
-        const larguraReal = window.innerWidth;
-        const alturaReal = window.innerHeight;
-
+        const larguraReal = window.innerWidth || 360;
+        const alturaReal = window.innerHeight || 640;
         canvas.height = alturaReal;
         canvas.width = alturaReal * (9 / 16);
-        
         if (canvas.width > larguraReal) {
             canvas.width = larguraReal;
             canvas.height = larguraReal * (16 / 9);
         }
-        
         configurarPainel();
     }
 
-    // --- CONTROLES TECLADO ---
+    function verificarColisao(obj1, obj2) {
+        return obj1.x < obj2.x + obj2.largura &&
+               obj1.x + obj1.largura > obj2.x &&
+               obj1.y < obj2.y + obj2.altura &&
+               obj1.y + obj1.altura > obj2.y;
+    }
+
+    function instanciarExplosao(x, y, larg, alt) {
+        explosoes.push({
+            x: x, y: y, largura: larg, altura: alt,
+            vidaMaxima: 30, vidaAtual: 30
+        });
+        tocarSomExplosao();
+    }
+
+    // --- CONTROLES (TECLADO) ---
     window.addEventListener("keydown", (e) => {
+        if (x_jogador.destruido) return;
         if (e.key === "ArrowLeft" || e.key === "a") x_jogador.movendoEsquerda = true;
         if (e.key === "ArrowRight" || e.key === "d") x_jogador.movendoDireita = true;
         if (e.key === "ArrowUp" || e.key === "w") x_jogador.movendoCima = true;
@@ -124,49 +153,33 @@
         if (e.key === "ArrowDown" || e.key === "s") x_jogador.movendoBaixo = false;
     });
 
-    // --- SISTEMA MULTI-TOUCH ---
+    // --- CONTROLES (TOQUE / MOBILE) ---
     function gerenciarToques(e) {
+        if (x_jogador.destruido) return;
         e.preventDefault();
-        x_jogador.movendoEsquerda = false;
-        x_jogador.movendoDireita = false;
-        x_jogador.movendoCima = false;
-        x_jogador.movendoBaixo = false;
-
+        x_jogador.movendoEsquerda = false; x_jogador.movendoDireita = false;
+        x_jogador.movendoCima = false; x_jogador.movendoBaixo = false;
         const rect = canvas.getBoundingClientRect();
-
         for (let i = 0; i < e.touches.length; i++) {
             const toque = e.touches[i];
             const touchX = toque.clientX - rect.left;
             const touchY = toque.clientY - rect.top;
 
-            if (touchX >= painel.btnEsq.x && touchX <= painel.btnEsq.x + painel.btnEsq.l &&
-                touchY >= painel.btnEsq.y && touchY <= painel.btnEsq.y + painel.btnEsq.a) {
-                x_jogador.movendoEsquerda = true;
-            }
-            if (touchX >= painel.btnDir.x && touchX <= painel.btnDir.x + painel.btnDir.l &&
-                touchY >= painel.btnDir.y && touchY <= painel.btnDir.y + painel.btnDir.a) {
-                x_jogador.movendoDireita = true;
-            }
-            if (touchX >= painel.btnCima.x && touchX <= painel.btnCima.x + painel.btnCima.l &&
-                touchY >= painel.btnCima.y && touchY <= painel.btnCima.y + painel.btnCima.a) {
-                x_jogador.movendoCima = true;
-            }
-            if (touchX >= painel.btnBaixo.x && touchX <= painel.btnBaixo.x + painel.btnBaixo.l &&
-                touchY >= painel.btnBaixo.y && touchY <= painel.btnBaixo.y + painel.btnBaixo.a) {
-                x_jogador.movendoBaixo = true;
-            }
+            if (touchX >= painel.btnEsq.x && touchX <= painel.btnEsq.x + painel.btnEsq.l && touchY >= painel.btnEsq.y && touchY <= painel.btnEsq.y + painel.btnEsq.a) x_jogador.movendoEsquerda = true;
+            if (touchX >= painel.btnDir.x && touchX <= painel.btnDir.x + painel.btnDir.l && touchY >= painel.btnDir.y && touchY <= painel.btnDir.y + painel.btnDir.a) x_jogador.movendoDireita = true;
+            if (touchX >= painel.btnCima.x && touchX <= painel.btnCima.x + painel.btnCima.l && touchY >= painel.btnCima.y && touchY <= painel.btnCima.y + painel.btnCima.a) x_jogador.movendoCima = true;
+            if (touchX >= painel.btnBaixo.x && touchX <= painel.btnBaixo.x + painel.btnBaixo.l && touchY >= painel.btnBaixo.y && touchY <= painel.btnBaixo.y + painel.btnBaixo.a) x_jogador.movendoBaixo = true;
         }
     }
 
     canvas.addEventListener("touchstart", (e) => {
+        if (x_jogador.destruido) return;
         const rect = canvas.getBoundingClientRect();
         for (let i = 0; i < e.changedTouches.length; i++) {
             const toque = e.changedTouches[i];
             const touchX = toque.clientX - rect.left;
             const touchY = toque.clientY - rect.top;
-
-            const distConst = Math.sqrt(Math.pow(touchX - painel.btnAtirar.x, 2) + Math.pow(touchY - painel.btnAtirar.y, 2));
-            if (distConst <= painel.btnAtirar.raio) { atirar(); }
+            if (Math.sqrt(Math.pow(touchX - painel.btnAtirar.x, 2) + Math.pow(touchY - painel.btnAtirar.y, 2)) <= painel.btnAtirar.raio) atirar();
         }
         gerenciarToques(e);
     }, { passive: false });
@@ -175,6 +188,7 @@
     canvas.addEventListener("touchend", gerenciarToques, { passive: false });
 
     function atirar() {
+        if (x_jogador.destruido) return;
         const larguraTiro = 18; const alturaTiro = 36;
         tiros.push({
             x: x_jogador.x + (x_jogador.largura / 2) - (larguraTiro / 2),
@@ -184,81 +198,171 @@
         tocarSomTiro();
     }
 
-    function atualizar() {
-        cenario.y1 += cenario.velocidade;
-        cenario.y2 += cenario.velocidade;
+    function spawnInimigo(timestamp) {
+        if (x_jogador.destruido) return;
+        if (timestamp - ultimoInimigoCriado > intervaloInimigos) {
+            const largInimigo = 55; const altInimigo = 55;
+            const xAleatorio = Math.random() * (canvas.width - largInimigo);
+            batedores.push({
+                x: xAleatorio, y: -altInimigo, largura: largInimigo, altura: altInimigo,
+                velocidade: 3.5, ultimoTiro: timestamp, cadenciaTiro: 1200 
+            });
+            ultimoInimigoCriado = timestamp;
+        }
+    }
 
-        if (cenario.y1 >= canvas.height) { cenario.y1 = -canvas.height + (cenario.y1 - canvas.height); }
-        if (cenario.y2 >= canvas.height) { cenario.y2 = -canvas.height + (cenario.y2 - canvas.height); }
+    // --- LÓGICA DO JOGO ---
+    function atualizar(timestamp) {
+        cenario.y1 += cenario.velocidade; cenario.y2 += cenario.velocidade;
+        if (cenario.y1 >= canvas.height) cenario.y1 = -canvas.height;
+        if (cenario.y2 >= canvas.height) cenario.y2 = -canvas.height;
 
-        if (x_jogador.movendoEsquerda && x_jogador.x > 0) x_jogador.x -= x_jogador.velocidade;
-        if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidade;
-        if (x_jogador.movendoCima && x_jogador.y > 0) x_jogador.y -= x_jogador.velocidade;
-        if (x_jogador.movendoBaixo && x_jogador.y < painel.y - x_jogador.altura) x_jogador.y += x_jogador.velocidade;
+        if (!x_jogador.destruido) {
+            if (x_jogador.movendoEsquerda && x_jogador.x > 0) x_jogador.x -= x_jogador.velocidade;
+            if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidade;
+            if (x_jogador.movendoCima && x_jogador.y > 0) x_jogador.y -= x_jogador.velocidade;
+            if (x_jogador.movendoBaixo && x_jogador.y < painel.y - x_jogador.altura) x_jogador.y += x_jogador.velocidade;
+        }
 
         for (let i = tiros.length - 1; i >= 0; i--) {
             tiros[i].y -= tiros[i].velocidade; 
-            if (tiros[i].y + tiros[i].altura < 0) { tiros.splice(i, 1); }
+            if (tiros[i].y + tiros[i].altura < 0) tiros.splice(i, 1);
+        }
+
+        spawnInimigo(timestamp);
+
+        for (let i = batedores.length - 1; i >= 0; i--) {
+            const inimigo = batedores[i];
+            inimigo.y += inimigo.velocidade; 
+
+            if (timestamp - inimigo.ultimoTiro > inimigo.cadenciaTiro && inimigo.y < painel.y) {
+                const largBola = 16; const altBola = 16;
+                bolasMalditas.push({
+                    x: inimigo.x + (inimigo.largura / 2) - (largBola / 2),
+                    y: inimigo.y + inimigo.altura, largura: largBola, altura: altBola, velocidade: 6 
+                });
+                inimigo.ultimoTiro = timestamp;
+            }
+
+            for (let j = tiros.length - 1; j >= 0; j--) {
+                if (verificarColisao(tiros[j], inimigo)) {
+                    instanciarExplosao(inimigo.x, inimigo.y, inimigo.largura, inimigo.altura);
+                    batedores.splice(i, 1);
+                    tiros.splice(j, 1);
+                    break;
+                }
+            }
+
+            if (inimigo && inimigo.y > painel.y) batedores.splice(i, 1);
+        }
+
+        for (let j = bolasMalditas.length - 1; j >= 0; j--) {
+            const bola = bolasMalditas[j];
+            bola.y += bola.velocidade; 
+
+            if (!x_jogador.destruido && verificarColisao(bola, x_jogador)) {
+                instanciarExplosao(bola.x, bola.y - 10, 30, 30);
+                bolasMalditas.splice(j, 1);
+                
+                x_jogador.vida--; 
+                if (x_jogador.vida <= 0) {
+                    x_jogador.vida = 0;
+                    x_jogador.destruido = true;
+                    instanciarExplosao(x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura);
+                }
+                continue;
+            }
+
+            if (bola.y > painel.y) bolasMalditas.splice(j, 1);
+        }
+
+        for (let k = explosoes.length - 1; k >= 0; k--) {
+            explosoes[k].vidaAtual--;
+            if (explosoes[k].vidaAtual <= 0) explosoes.splice(k, 1);
         }
     }
 
+    // --- GRÁFICOS DO JOGO ---
     function desenhar() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#0b0b16";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        if (imgFundo.complete) {
+        // Bloco protetor: se a imagem falhar por 404, desenha um fundo escuro padrão
+        if (imgFundo.complete && imgFundo.width > 0) {
             ctx.drawImage(imgFundo, 0, cenario.y1, canvas.width, canvas.height);
             ctx.drawImage(imgFundo, 0, cenario.y2, canvas.width, canvas.height);
         } else {
-            ctx.fillStyle = "#020208";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#0c0c1e"; ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
         tiros.forEach(tiro => {
-            if (imgTiro.complete) { ctx.drawImage(imgTiro, tiro.x, tiro.y, tiro.largura, tiro.altura); }
+            if (imgTiro.complete && imgTiro.width > 0) { ctx.drawImage(imgTiro, tiro.x, tiro.y, tiro.largura, tiro.altura); } 
+            else { ctx.fillStyle = "#00ffcc"; ctx.fillRect(tiro.x, tiro.y, tiro.largura, tiro.altura); }
         });
 
-        if (imgNave.complete) {
-            ctx.drawImage(imgNave, x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura);
-        } else {
-            ctx.fillStyle = "#00ff64";
-            ctx.fillRect(x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura);
+        batedores.forEach(inimigo => {
+            if (imgBatedor.complete && imgBatedor.width > 0) { ctx.drawImage(imgBatedor, inimigo.x, inimigo.y, inimigo.largura, inimigo.altura); } 
+            else { ctx.fillStyle = "#ff0033"; ctx.fillRect(inimigo.x, inimigo.y, inimigo.largura, inimigo.altura); }
+        });
+
+        bolasMalditas.forEach(bola => {
+            if (imgBolaMaldita.complete && imgBolaMaldita.width > 0) { ctx.drawImage(imgBolaMaldita, bola.x, bola.y, bola.largura, bola.altura); } 
+            else { ctx.fillStyle = "#ffcc00"; ctx.beginPath(); ctx.arc(bola.x + 8, bola.y + 8, 8, 0, Math.PI * 2); ctx.fill(); }
+        });
+
+        if (!x_jogador.destruido) {
+            if (imgNave.complete && imgNave.width > 0) { ctx.drawImage(imgNave, x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura); } 
+            else { ctx.fillStyle = "#00ff64"; ctx.fillRect(x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura); }
         }
 
-        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-        ctx.font = "bold 28px sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
+        explosoes.forEach(exp => {
+            ctx.save(); ctx.globalAlpha = exp.vidaAtual / exp.vidaMaxima;
+            let raioX = (exp.largura / 2) * (1.5 - (exp.vidaAtual / exp.vidaMaxima));
+            if(raioX <= 0) raioX = 1;
+            ctx.fillStyle = "#ff5500"; ctx.beginPath(); 
+            ctx.arc(exp.x + exp.largura/2, exp.y + exp.altura/2, raioX * 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        });
 
-        ctx.fillText("▲", painel.btnCima.x + (painel.btnCima.l/2), painel.btnCima.y + (painel.btnCima.a/2));
-        ctx.fillText("◀️", painel.btnEsq.x + (painel.btnEsq.l/2), painel.btnEsq.y + (painel.btnEsq.a/2));
-        ctx.fillText("▶️", painel.btnDir.x + (painel.btnDir.l/2), painel.btnDir.y + (painel.btnDir.a/2));
-        ctx.fillText("▼", painel.btnBaixo.x + (painel.btnBaixo.l/2), painel.btnBaixo.y + (painel.btnBaixo.a/2));
+        // --- BARRA DE VIDA DOS 10 GOLPES ---
+        let corBarra = "#00d2ff"; 
+        if (x_jogador.vida <= 6 && x_jogador.vida > 3) corBarra = "#ffcc00"; 
+        else if (x_jogador.vida <= 3) corBarra = "#ff0033"; 
 
-        ctx.fillStyle = "rgba(255, 0, 68, 0.8)";
-        ctx.beginPath();
-        ctx.arc(painel.btnAtirar.x, painel.btnAtirar.y, painel.btnAtirar.raio, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#ff0044";
-        ctx.lineWidth = 3;
-        ctx.stroke();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.15)"; ctx.fillRect(20, 20, 140, 14);
+        if (x_jogador.vida > 0) {
+            ctx.fillStyle = corBarra; ctx.fillRect(20, 20, (x_jogador.vida / x_jogador.vidaMax) * 140, 14);
+        }
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.3)"; ctx.strokeRect(20, 20, 140, 14);
+
+        if (x_jogador.destruido) {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#ff0033"; ctx.font = "bold 32px sans-serif"; ctx.textAlign = "center";
+            ctx.fillText("FIM DE JOGO", canvas.width / 2, canvas.height / 2);
+        }
+
+        // Controles virtuais
+        ctx.fillStyle = "rgba(255, 255, 255, 0.2)"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("▲", painel.btnCima.x + 27, painel.btnCima.y + 27);
+        ctx.fillText("◀️", painel.btnEsq.x + 27, painel.btnEsq.y + 27);
+        ctx.fillText("▶️", painel.btnDir.x + 27, painel.btnDir.y + 27);
+        ctx.fillText("▼", painel.btnBaixo.x + 27, painel.btnBaixo.y + 27);
+        ctx.fillStyle = "rgba(255, 0, 68, 0.8)"; ctx.beginPath(); ctx.arc(painel.btnAtirar.x, painel.btnAtirar.y, painel.btnAtirar.raio, 0, Math.PI * 2); ctx.fill();
     }
 
-    function loop() {
-        atualizar();
+    function loop(timestamp) {
+        atualizar(timestamp || performance.now());
         desenhar();
         requestAnimationFrame(loop);
     }
 
-    // --- START SEGURO APÓS CARREGAMENTO DO BLOGGER ---
-    function darPartida() {
+    function iniciar() {
         ajustarTela();
-        setTimeout(ajustarTela, 150); // Garante o cálculo pós-renderização
-        loop();
+        requestAnimationFrame(loop);
     }
 
-    window.addEventListener("load", darPartida);
+    window.addEventListener("load", iniciar);
     window.addEventListener("resize", ajustarTela);
-    window.addEventListener("orientationchange", ajustarTela);
 </script>
 </body>
 </html>
