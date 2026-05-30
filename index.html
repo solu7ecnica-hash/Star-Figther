@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Star Fighter - Ferratech Jogos Edição Especial Corrigida</title>
+    <title>Star Fighter - Ferratech Jogos Campanha Social</title>
     <style>
         .bg-photo-overlay, .bg-photo-container, .centered-top-placeholder, 
         .centered-top-container, header, .skip-navigation, .sidebar-container {
@@ -53,25 +53,39 @@
     const imgBolaMaldita = new Image(); imgBolaMaldita.src = "bola_maldita.png"; 
     const imgChefao = new Image(); imgChefao.src = "chefao.png"; 
 
+    // Áudios Novos Solicitados
     function tocarSomTiro() {
         try { const som = new Audio("til.mp3"); som.volume = 0.2; som.play().catch(() => {}); } catch (e) {}
     }
-    function tocarSomExplosao() {
+    function tocarSomExplosaoComum() {
         try { const som = new Audio("bum.mp3"); som.volume = 0.4; som.play().catch(() => {}); } catch (e) {}
+    }
+    function tocarSomExplosaoBoss() {
+        try { const som = new Audio("explosao.mp3"); som.volume = 0.7; som.play().catch(() => {}); } catch (e) {}
+    }
+    function tocarSomSucao() {
+        try { const som = new Audio("chupou.mp3"); som.volume = 0.6; som.play().catch(() => {}); } catch (e) {}
     }
 
     // --- VARIÁVEIS DE ESTADO ---
-    let estadoJogo = "START"; 
+    let estadoJogo = "START"; // START, JOGANDO, TRANSICAO, GAMEOVER, VITORIA
+    let faseAtual = 1; // 1 = Corona (Inimigos/Boss), 2 = Buracos Negros
     let pontuacao = 0;
     let abates = 0;
     const META_CHEFÃO = 50; 
     let bossAtivo = false;
+    let bossMorrendo = false;
+    let tempoMorteBoss = 0;
+    let textoTransicao = "";
+    let tempoTransicao = 0;
     let tremorCena = 0; 
+    let anguloRotacaoGeral = 0; // Para fazer o buraco negro rodar
 
     const x_jogador = { 
         x: 0, y: 0, largura: 55, altura: 55, velocidad: 7,
         movendoEsquerda: false, movendoDireita: false, movendoCima: false, movendoBaixo: false,
-        vidaMax: 10, vida: 10, tipoTiro: "NORMAL" 
+        vidaMax: 10, vida: 10, tipoTiro: "NORMAL",
+        escala: 1, emSucao: false, buracoSugador: null
     };
 
     const cenario = { y1: 0, y2: 0, velocidade: 3.5 };
@@ -80,16 +94,16 @@
     const bolasMalditas = [];
     const explosoes = []; 
     const powerups = []; 
+    const buracosNegros = []; // Objetos da Fase 2
 
     let ultimoInimigoCriado = 0;
     let intervaloInimigos = 1600; 
 
     const chefao = {
-        x: 0, y: -120, largura: 130, altura: 100, velX: 3.5, velY: 1.5,
+        x: 0, y: -120, largura: 130, height: 100, velX: 3.5, velY: 1.5,
         vidaMax: 50, vida: 50, ultTiro: 0
     };
 
-    // Painel de botões virtuais
     const painel = {
         y: 0, altura: 150,
         btnEsq: { x: 15, y: 0, l: 50, a: 50 },
@@ -109,7 +123,6 @@
         painel.btnBaixo.y = painel.y + 90;
         painel.btnAtirar.x = canvas.width - painel.btnAtirar.raio - 20;
         painel.btnAtirar.y = painel.y + (painel.altura / 2);
-
         painel.btnIniciar.x = canvas.width / 2 - painel.btnIniciar.l / 2;
         painel.btnIniciar.y = canvas.height / 2 + 60;
 
@@ -132,14 +145,37 @@
     }
 
     function reiniciarJogo() {
-        pontuacao = 0; abates = 0; bossAtivo = false; tremorCena = 0;
+        pontuacao = 0; abates = 0; faseAtual = 1;
+        bossAtivo = false; bossMorrendo = false; tremorCena = 0;
         x_jogador.vida = x_jogador.vidaMax; x_jogador.tipoTiro = "NORMAL";
+        x_jogador.escala = 1; x_jogador.emSucao = false; x_jogador.buracoSugador = null;
         tiros.length = 0; batedores.length = 0; bolasMalditas.length = 0;
-        explosoes.length = 0; powerups.length = 0;
+        explosoes.length = 0; powerups.length = 0; buracosNegros.length = 0;
         chefao.vida = chefao.vidaMax; chefao.y = -120;
+        cenario.velocidade = 3.5;
         x_jogador.x = canvas.width / 2 - x_jogador.largura / 2;
         x_jogador.y = painel.y - x_jogador.altura - 30;
         estadoJogo = "JOGANDO";
+    }
+
+    function iniciarFase2() {
+        faseAtual = 2;
+        estadoJogo = "JOGANDO";
+        cenario.velocidade = 6; // Cenário passa mais rápido dando velocidade
+        tiros.length = 0;
+        bolasMalditas.length = 0;
+        
+        // Criar os 7 buracos negros espalhados verticalmente pelo cenário de forma harmônica
+        buracosNegros.length = 0;
+        for (let i = 0; i < 7; i++) {
+            buracosNegros.push({
+                x: Math.random() * (canvas.width - 90) + 45,
+                y: -150 - (i * 280), // Vêm descendo em fila espaçada
+                raioBoca: 30,       // Limite físico de colisão
+                raioAtracao: 90,    // Área onde começa a puxar a nave
+                velocidadeCair: 2.5
+            });
+        }
     }
 
     function verificarColisao(a, b) {
@@ -149,7 +185,7 @@
 
     function instanciarExplosao(x, y, l, a) {
         explosoes.push({ x, y, largura: l, altura: a, vidaMax: 25, vida: 25 });
-        tocarSomExplosao();
+        tocarSomExplosaoComum();
     }
 
     function tentarDropPowerup(x, y) {
@@ -163,7 +199,7 @@
     window.addEventListener("keydown", e => {
         if (estadoJogo === "START" && (e.key === " " || e.key === "Enter")) { reiniciarJogo(); return; }
         if ((estadoJogo === "GAMEOVER" || estadoJogo === "VITORIA") && (e.key === " " || e.key === "Enter")) { estadoJogo = "START"; return; }
-        if (estadoJogo !== "JOGANDO") return;
+        if (estadoJogo !== "JOGANDO" || x_jogador.emSucao) return;
 
         if (e.key === "ArrowLeft" || e.key === "a") x_jogador.movendoEsquerda = true;
         if (e.key === "ArrowRight" || e.key === "d") x_jogador.movendoDireita = true;
@@ -181,7 +217,7 @@
 
     // --- CONTROLES TOQUE ---
     function processarToques(e) {
-        if (estadoJogo !== "JOGANDO") return;
+        if (estadoJogo !== "JOGANDO" || x_jogador.emSucao) return;
         e.preventDefault();
         x_jogador.movendoEsquerda = false; x_jogador.movendoDireita = false;
         x_jogador.movendoCima = false; x_jogador.movendoBaixo = false;
@@ -216,6 +252,7 @@
             return;
         }
 
+        if (x_jogador.emSucao) return;
         let d = Math.sqrt(Math.pow(tx - painel.btnAtirar.x, 2) + Math.pow(ty - painel.btnAtirar.y, 2));
         if (d <= painel.btnAtirar.raio) atirar();
 
@@ -226,8 +263,7 @@
     canvas.addEventListener("touchend", processarToques, { passive: false });
 
     function atirar() {
-        if (estadoJogo !== "JOGANDO") return;
-        // CORRIGIDO: Atributo alterado de height para altura em todas as instâncias de tiro
+        if (estadoJogo !== "JOGANDO" || x_jogador.emSucao) return;
         if (x_jogador.tipoTiro === "DUPLO") {
             tiros.push({ x: x_jogador.x + 5, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 13 });
             tiros.push({ x: x_jogador.x + x_jogador.largura - 15, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 13 });
@@ -237,118 +273,196 @@
         tocarSomTiro();
     }
 
-    // --- MÁQUINA DE LÓGICA ---
+    // --- MÁQUINA DE LÓGICA DO MOTOR DO JOGO ---
     function atualizar(ts) {
+        // Rolagem de fundo independente
         cenario.y1 += cenario.velocidade; cenario.y2 += cenario.velocidade;
         if (cenario.y1 >= canvas.height) cenario.y1 = -canvas.height;
         if (cenario.y2 >= canvas.height) cenario.y2 = -canvas.height;
 
-        // Se o jogo acabou ou venceu, o tremor zera e para na hora
-        if (estadoJogo !== "JOGANDO") {
-            tremorCena = 0;
+        // Rotação incremental dos buracos negros
+        anguloRotacaoGeral += 0.05;
+
+        // Tela de transição entre fases temporizada
+        if (estadoJogo === "TRANSICAO") {
+            if (ts - tempoTransicao > 3000) {
+                iniciarFase2();
+            }
             return;
         }
 
+        if (estadoJogo !== "JOGANDO") { tremorCena = 0; return; }
         if (tremorCena > 0) tremorCena -= 0.5;
 
-        if (abates < 15) { intervaloInimigos = 1600; } 
-        else if (abates < 35) { intervaloInimigos = 1100; cenario.velocidade = 5; } 
-        else if (abates < META_CHEFÃO) { intervaloInimigos = 750; }
+        // --- LÓGICA DE MOVIMENTAÇÃO DA NAVE (SE NÃO ESTIVER EM SUCÇÃO) ---
+        if (!x_jogador.emSucao) {
+            if (x_jogador.movendoEsquerda && x_jogador.x > 0) x_jogador.x -= x_jogador.velocidad;
+            if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidad;
+            if (x_jogador.movendoCima && x_jogador.y > 0) x_jogador.y -= x_jogador.velocidad;
+            if (x_jogador.movendoBaixo && x_jogador.y < painel.y - x_jogador.altura) x_jogador.y += x_jogador.velocidad;
+        } else {
+            // FÍSICA DE SUCÇÃO DE BURACO NEGRO: Puxa o centro da nave pro centro do buraco negro
+            let centroNaveX = x_jogador.x + x_jogador.largura / 2;
+            let centroNaveY = x_jogador.y + x_jogador.altura / 2;
+            let bn = x_jogador.buracoSugador;
 
-        if (x_jogador.movendoEsquerda && x_jogador.x > 0) x_jogador.x -= x_jogador.velocidad;
-        if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidad;
-        if (x_jogador.movendoCima && x_jogador.y > 0) x_jogador.y -= x_jogador.velocidad;
-        if (x_jogador.movendoBaixo && x_jogador.y < painel.y - x_jogador.altura) x_jogador.y += x_jogador.velocidad;
+            let distX = bn.x - centroNaveX;
+            let distY = bn.y - centroNaveY;
 
-        if (abates >= META_CHEFÃO && !bossAtivo) {
-            bossAtivo = true;
-            chefao.x = canvas.width / 2 - chefao.largura / 2;
+            // Move a nave em direção ao núcleo do buraco negro
+            x_jogador.x += distX * 0.08;
+            x_jogador.y += distY * 0.08;
+
+            // Efeito visual de encolhimento progressivo
+            x_jogador.escala -= 0.02;
+
+            if (x_jogador.escala <= 0.05) {
+                x_jogador.vida = 0;
+                estadoJogo = "GAMEOVER";
+            }
+            return; // Se está em sucção, pula as outras mecânicas físicas ordinárias
         }
 
+        // --- DINÂMICA DA FASE 1: CORONAVÍRUS ---
+        if (faseAtual === 1) {
+            if (abates < 15) { intervaloInimigos = 1600; } 
+            else if (abates < 35) { intervaloInimigos = 1100; cenario.velocidade = 5; } 
+            else if (abates < META_CHEFÃO) { intervaloInimigos = 750; }
+
+            if (abates >= META_CHEFÃO && !bossAtivo && !bossMorrendo) {
+                bossAtivo = true;
+                chefao.x = canvas.width / 2 - chefao.largura / 2;
+            }
+
+            // Tratamento da morte sequencial dramática do Boss
+            if (bossMorrendo) {
+                if (Math.random() < 0.25) {
+                    instanciarExplosao(chefao.x + Math.random()*chefao.largura, chefao.y + Math.random()*100, 30, 30);
+                }
+                if (ts - tempoMorteBoss > 3000) { 
+                    bossMorrendo = false;
+                    estadoJogo = "TRANSICAO";
+                    tempoTransicao = ts;
+                }
+                return; 
+            }
+
+            // Balas do jogador contra batedores e Boss
+            for (let i = tiros.length - 1; i >= 0; i--) {
+                tiros[i].y -= tiros[i].vel;
+                if (bossAtivo && verificarColisao(tiros[i], {x: chefao.x, y: chefao.y, largura: chefao.largura, altura: chefao.height}) && chefao.y > 0) {
+                    instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20);
+                    tiros.splice(i, 1);
+                    chefao.vida--;
+                    pontuacao += 50;
+                    if (chefao.vida <= 0) {
+                        bossAtivo = false;
+                        bossMorrendo = true;
+                        tempoMorteBoss = ts;
+                        pontuacao += 5000;
+                        tocarSomExplosaoBoss(); // Dispara o som robusto exclusivo!
+                    }
+                    continue;
+                }
+                if (tiros[i] && tiros[i].y + 25 < 0) tiros.splice(i, 1);
+            }
+
+            if (bossAtivo) {
+                if (chefao.y < 60) chefao.y += chefao.velY;
+                else {
+                    chefao.x += chefao.velX;
+                    if (chefao.x <= 10 || chefao.x >= canvas.width - chefao.largura - 10) chefao.velX *= -1;
+                }
+                if (ts - chefao.ultTiro > 850 && chefao.y > 0) {
+                    bolasMalditas.push({ x: chefao.x + 20, y: chefao.y + chefao.height, largura: 16, altura: 16, vel: 6.5 });
+                    bolasMalditas.push({ x: chefao.x + chefao.largura - 36, y: chefao.y + chefao.height, largura: 16, altura: 16, vel: 6.5 });
+                    chefao.ultTiro = ts;
+                }
+            }
+
+            if (!bossAtivo && ts - ultimoInimigoCriado > intervaloInimigos) {
+                batedores.push({ x: Math.random() * (canvas.width - 45), y: -45, largura: 45, altura: 45, vel: 3.5, ultTiro: ts });
+                ultimoInimigoCriado = ts;
+            }
+
+            for (let i = batedores.length - 1; i >= 0; i--) {
+                let b = batedores[i]; b.y += b.vel;
+                if (ts - b.ultTiro > 1200 && b.y < painel.y) {
+                    bolasMalditas.push({ x: b.x + b.largura/2 - 7, y: b.y + b.altura, largura: 14, altura: 14, vel: 5.5 });
+                    b.ultTiro = ts;
+                }
+                for (let j = tiros.length - 1; j >= 0; j--) {
+                    if (verificarColisao(tiros[j], b)) {
+                        instanciarExplosao(b.x, b.y, b.largura, b.altura);
+                        tentarDropPowerup(b.x, b.y);
+                        batedores.splice(i, 1); tiros.splice(j, 1);
+                        abates++; pontuacao += 150;
+                        break;
+                    }
+                }
+                if (b && b.y > painel.y) batedores.splice(i, 1);
+            }
+
+            for (let i = bolasMalditas.length - 1; i >= 0; i--) {
+                let bm = bolasMalditas[i]; bm.y += bm.vel;
+                if (verificarColisao(bm, x_jogador)) {
+                    instanciarExplosao(bm.x, bm.y, 20, 20);
+                    bolasMalditas.splice(i, 1);
+                    x_jogador.vida--; tremorCena = 10; 
+                    if (x_jogador.vida <= 0) { estadoJogo = "GAMEOVER"; }
+                    continue;
+                }
+                if (bm.y > painel.y) bolasMalditas.splice(i, 1);
+            }
+        }
+
+        // --- DINÂMICA DA FASE 2: CAMPOS MAGNÉTICOS DOS BURACOS NEGROS ---
+        if (faseAtual === 2) {
+            let todosPassaram = true;
+
+            for (let i = buracosNegros.length - 1; i >= 0; i--) {
+                let bn = buracosNegros[i];
+                bn.y += bn.velocidadeCair;
+
+                if (bn.y < painel.y + 100) {
+                    todosPassaram = false;
+                }
+
+                // Cálculo da distância matemática euclidiana entre centros para checar gravidade
+                let centroNaveX = x_jogador.x + x_jogador.largura / 2;
+                let centroNaveY = x_jogador.y + x_jogador.altura / 2;
+                let distancia = Math.sqrt(Math.pow(bn.x - centroNaveX, 2) + Math.pow(bn.y - centroNaveY, 2));
+
+                // 1. Verificar se entrou no limite físico da BOCA (Ativa a animação fatal)
+                if (distancia <= bn.raioBoca && !x_jogador.emSucao) {
+                    x_jogador.emSucao = true;
+                    x_jogador.buracoSugador = bn;
+                    tocarSomSucao(); // Toca o som exclusivo solicitado!
+                }
+                // 2. Efeito gravitacional de atração sutil se estiver dentro do raio magnético amplo
+                else if (distancia <= bn.raioAtracao && !x_jogador.emSucao) {
+                    if (centroNaveX < bn.x) x_jogador.x += 1.5;
+                    else x_jogador.x -= 1.5;
+                    if (centroNaveY < bn.y) x_jogador.y += 1.5;
+                    else x_jogador.y -= 1.5;
+                }
+            }
+
+            // Condição absoluta de Vitória: Sobreviver a todos os 7 Buracos Negros!
+            if (todosPassaram && buracosNegros.length > 0 && !x_jogador.emSucao) {
+                estadoJogo = "VITORIA";
+            }
+        }
+
+        // Atualização genérica de objetos estéticos
         for (let i = powerups.length - 1; i >= 0; i--) {
             powerups[i].y += powerups[i].vel;
             if (verificarColisao(powerups[i], x_jogador)) {
                 if (powerups[i].tipo === "TIRO_DUPLO") x_jogador.tipoTiro = "DUPLO";
                 if (powerups[i].tipo === "VIDA") x_jogador.vida = Math.min(x_jogador.vidaMax, x_jogador.vida + 3);
-                powerups.splice(i, 1);
-                continue;
+                powerups.splice(i, 1); continue;
             }
             if (powerups[i] && powerups[i].y > painel.y) powerups.splice(i, 1);
-        }
-
-        // Balas do Jogador (Mecânica corrigida e funcional!)
-        for (let i = tiros.length - 1; i >= 0; i--) {
-            tiros[i].y -= tiros[i].vel;
-
-            if (bossAtivo && verificarColisao(tiros[i], chefao) && chefao.y > 0) {
-                instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20);
-                tiros.splice(i, 1);
-                chefao.vida--;
-                pontuacao += 50;
-                if (chefao.vida <= 0) {
-                    instanciarExplosao(chefao.x + chefao.largura/2, chefao.y + chefao.altura/2, chefao.largura, chefao.altura);
-                    pontuacao += 5000;
-                    estadoJogo = "VITORIA";
-                }
-                continue;
-            }
-            if (tiros[i] && tiros[i].y + 25 < 0) tiros.splice(i, 1);
-        }
-
-        if (bossAtivo) {
-            if (chefao.y < 60) chefao.y += chefao.velY;
-            else {
-                chefao.x += chefao.velX;
-                if (chefao.x <= 10 || chefao.x >= canvas.width - chefao.largura - 10) chefao.velX *= -1;
-            }
-            if (ts - chefao.ultTiro > 850 && chefao.y > 0) {
-                bolasMalditas.push({ x: chefao.x + 20, y: chefao.y + chefao.altura, largura: 16, altura: 16, vel: 6.5 });
-                bolasMalditas.push({ x: chefao.x + chefao.largura - 36, y: chefao.y + chefao.altura, largura: 16, altura: 16, vel: 6.5 });
-                chefao.ultTiro = ts;
-            }
-        }
-
-        if (!bossAtivo && ts - ultimoInimigoCriado > intervaloInimigos) {
-            batedores.push({ x: Math.random() * (canvas.width - 45), y: -45, largura: 45, altura: 45, vel: 3.5, ultTiro: ts });
-            ultimoInimigoCriado = ts;
-        }
-
-        for (let i = batedores.length - 1; i >= 0; i--) {
-            let b = batedores[i]; b.y += b.vel;
-            if (ts - b.ultTiro > 1200 && b.y < painel.y) {
-                bolasMalditas.push({ x: b.x + b.largura/2 - 7, y: b.y + b.altura, largura: 14, altura: 14, vel: 5.5 });
-                b.ultTiro = ts;
-            }
-            // Colisão do tiro acertando e abatendo o inimigo
-            for (let j = tiros.length - 1; j >= 0; j--) {
-                if (verificarColisao(tiros[j], b)) {
-                    instanciarExplosao(b.x, b.y, b.largura, b.altura);
-                    tentarDropPowerup(b.x, b.y);
-                    batedores.splice(i, 1); 
-                    tiros.splice(j, 1);
-                    abates++;
-                    pontuacao += 150;
-                    break;
-                }
-            }
-            if (b && b.y > painel.y) batedores.splice(i, 1);
-        }
-
-        for (let i = bolasMalditas.length - 1; i >= 0; i--) {
-            let bm = bolasMalditas[i]; bm.y += bm.vel;
-            if (verificarColisao(bm, x_jogador)) {
-                instanciarExplosao(bm.x, bm.y, 20, 20);
-                bolasMalditas.splice(i, 1);
-                x_jogador.vida--;
-                tremorCena = 10; 
-                if (x_jogador.vida <= 0) { 
-                    x_jogador.vida = 0;
-                    instanciarExplosao(x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura);
-                    estadoJogo = "GAMEOVER";
-                }
-                continue;
-            }
-            if (bm.y > painel.y) bolasMalditas.splice(i, 1);
         }
 
         for (let i = explosoes.length - 1; i >= 0; i--) {
@@ -357,13 +471,11 @@
         }
     }
 
-    // --- ENGINE DE ARTE ---
+    // --- RENDERIZADOR GRÁFICO (ARTE DO JOGO) ---
     function desenhar() {
         ctx.save();
         if (tremorCena > 0 && estadoJogo === "JOGANDO") {
-            let dx = (Math.random() - 0.5) * tremorCena;
-            let dy = (Math.random() - 0.5) * tremorCena;
-            ctx.translate(dx, dy);
+            ctx.translate((Math.random() - 0.5) * tremorCena, (Math.random() - 0.5) * tremorCena);
         }
 
         ctx.fillStyle = "#090912"; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -371,6 +483,30 @@
         if (imgFundo.complete && imgFundo.width > 0) {
             ctx.drawImage(imgFundo, 0, cenario.y1, canvas.width, canvas.height);
             ctx.drawImage(imgFundo, 0, cenario.y2, canvas.width, canvas.height);
+        }
+
+        // DESENHAR BURACOS NEGROS COM FUNÇÃO ROTATE ATIVA
+        if (faseAtual === 2 && estadoJogo === "JOGANDO") {
+            buracosNegros.forEach(bn => {
+                ctx.save();
+                ctx.translate(bn.x, bn.y);
+                ctx.rotate(anguloRotacaoGeral); // Aplica rotação dinâmica contínua!
+
+                // Desenho do vórtice gravitacional espiral externo do buraco negro
+                let gradiente = ctx.createRadialGradient(0, 0, bn.raioBoca - 5, 0, 0, bn.raioAtracao);
+                gradiente.addColorStop(0, "rgba(10, 0, 25, 1)");
+                gradiente.addColorStop(0.3, "rgba(130, 0, 255, 0.4)");
+                gradiente.addColorStop(0.7, "rgba(0, 240, 255, 0.15)");
+                gradiente.addColorStop(1, "rgba(0, 0, 0, 0)");
+                ctx.fillStyle = gradiente;
+                ctx.beginPath(); ctx.arc(0, 0, bn.raioAtracao, 0, Math.PI * 2); ctx.fill();
+
+                // Núcleo denso preto (A boca do perigo)
+                ctx.fillStyle = "#000000";
+                ctx.beginPath(); ctx.arc(0, 0, bn.raioBoca, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = "#8200ff"; ctx.lineWidth = 2; ctx.stroke();
+                ctx.restore();
+            });
         }
 
         powerups.forEach(p => {
@@ -385,30 +521,44 @@
             else { ctx.fillStyle = "#00ffcc"; ctx.fillRect(t.x, t.y, t.largura, 25); }
         });
 
-        batedores.forEach(b => {
-            if (imgBatedor.complete && imgBatedor.width > 0) ctx.drawImage(imgBatedor, b.x, b.y, b.largura, b.altura);
-            else { ctx.fillStyle = "#ff2244"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
-        });
+        if (faseAtual === 1) {
+            batedores.forEach(b => {
+                if (imgBatedor.complete && imgBatedor.width > 0) ctx.drawImage(imgBatedor, b.x, b.y, b.largura, b.altura);
+                else { ctx.fillStyle = "#ff2244"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
+            });
 
-        if (bossAtivo && estadoJogo === "JOGANDO") {
-            if (imgChefao.complete && imgChefao.width > 0) {
-                ctx.drawImage(imgChefao, chefao.x, chefao.y, chefao.largura, chefao.altura);
-            } else {
-                ctx.fillStyle = "#990022"; ctx.fillRect(chefao.x, chefao.y, chefao.largura, chefao.altura);
-                ctx.fillStyle = "#ff0044"; ctx.fillRect(chefao.x + 20, chefao.y + chefao.altura - 15, chefao.largura - 40, 15);
+            if ((bossAtivo || bossMorrendo) && estadoJogo === "JOGANDO") {
+                if (imgChefao.complete && imgChefao.width > 0) {
+                    ctx.drawImage(imgChefao, chefao.x, chefao.y, chefao.largura, chefao.height);
+                } else {
+                    ctx.fillStyle = "#990022"; ctx.fillRect(chefao.x, chefao.y, chefao.largura, chefao.height);
+                }
+                if (bossAtivo) {
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(canvas.width/2 - 100, 15, 200, 8);
+                    ctx.fillStyle = "#ff0044"; ctx.fillRect(canvas.width/2 - 100, 15, (chefao.vida / chefao.vidaMax) * 200, 8);
+                }
             }
-            ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(canvas.width/2 - 100, 15, 200, 8);
-            ctx.fillStyle = "#ff0044"; ctx.fillRect(canvas.width/2 - 100, 15, (chefao.vida / chefao.vidaMax) * 200, 8);
+
+            bolasMalditas.forEach(bm => {
+                if (imgBolaMaldita.complete && imgBolaMaldita.width > 0) ctx.drawImage(imgBolaMaldita, bm.x, bm.y, bm.largura, bm.altura);
+                else { ctx.fillStyle = "#ffcc00"; ctx.beginPath(); ctx.arc(bm.x+7, bm.y+7, 7, 0, Math.PI*2); ctx.fill(); }
+            });
         }
 
-        bolasMalditas.forEach(bm => {
-            if (imgBolaMaldita.complete && imgBolaMaldita.width > 0) ctx.drawImage(imgBolaMaldita, bm.x, bm.y, bm.largura, bm.altura);
-            else { ctx.fillStyle = "#ffcc00"; ctx.beginPath(); ctx.arc(bm.x+7, bm.y+7, 7, 0, Math.PI*2); ctx.fill(); }
-        });
-
+        // DESENHAR NAVE APLICANDO ESCALA DE SUCÇÃO DO BURACO NEGRO
         if (estadoJogo === "JOGANDO") {
-            if (imgNave.complete && imgNave.width > 0) ctx.drawImage(imgNave, x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura);
-            else { ctx.fillStyle = "#00ff55"; ctx.fillRect(x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura); }
+            ctx.save();
+            let cX = x_jogador.x + x_jogador.largura / 2;
+            let cY = x_jogador.y + x_jogador.altura / 2;
+            ctx.translate(cX, cY);
+            ctx.scale(x_jogador.escala, x_jogador.escala); // Encolhe matematicamente se ativado!
+
+            if (imgNave.complete && imgNave.width > 0) {
+                ctx.drawImage(imgNave, -x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura);
+            } else {
+                ctx.fillStyle = "#00ff55"; ctx.fillRect(-x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura);
+            }
+            ctx.restore();
         }
 
         explosoes.forEach(ex => {
@@ -416,7 +566,7 @@
             ctx.beginPath(); ctx.arc(ex.x + ex.largura/2, ex.y + ex.altura/2, ex.largura * 1.5, 0, Math.PI*2); ctx.fill();
         });
 
-        // HUD DO JOGADOR
+        // HUD DA INTERFACE
         ctx.fillStyle = "rgba(255, 255, 255, 0.12)"; ctx.fillRect(25, 25, 120, 12);
         if (x_jogador.vida > 0) {
             ctx.fillStyle = x_jogador.vida > 4 ? "#00d2ff" : "#ff2244";
@@ -427,7 +577,7 @@
         ctx.fillStyle = "#fff"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "left";
         ctx.fillText("SCORE: " + pontuacao, 25, 52);
         ctx.font = "11px sans-serif";
-        ctx.fillText("ALVOS: " + abates + (bossAtivo ? " [BOSS]" : " / " + META_CHEFÃO), 25, 68);
+        ctx.fillText("FASE: " + faseAtual + (faseAtual === 1 ? " (Corona)" : " (Buraco Negro)"), 25, 68);
 
         if (estadoJogo === "JOGANDO") {
             ctx.fillStyle = "rgba(255, 255, 255, 0.22)"; ctx.font = "24px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -440,14 +590,25 @@
             ctx.strokeStyle = "rgba(255, 0, 70, 0.9)"; ctx.lineWidth = 2; ctx.stroke();
         }
 
-        // --- PAINÉIS DE MARKETING FIXOS (SEM TREMOR) ---
+        // TELA DE TRANSIÇÃO ESTILIZADA DE CAPA
+        if (estadoJogo === "TRANSICAO") {
+            ctx.fillStyle = "rgba(5, 0, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillStyle = "#00ffcc"; ctx.font = "bold 26px sans-serif";
+            ctx.fillText("CORONAVÍRUS DETONADO!", canvas.width / 2, canvas.height / 2 - 30);
+            ctx.fillStyle = "#ffffff"; ctx.font = "bold 20px sans-serif";
+            ctx.fillText("FASE 2: CAMPOS MAGNÉTICOS", canvas.width / 2, canvas.height / 2 + 20);
+            ctx.fillStyle = "#8200ff"; ctx.font = "13px sans-serif";
+            ctx.fillText("Desvie dos 7 Buracos Negros Mortais!", canvas.width / 2, canvas.height / 2 + 60);
+        }
+
         if (estadoJogo === "START") {
             ctx.fillStyle = "rgba(5, 5, 15, 0.9)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center";
             ctx.fillStyle = "#00d2ff"; ctx.font = "bold 32px sans-serif";
             ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 - 60);
             ctx.fillStyle = "#ffffff"; ctx.font = "14px sans-serif";
-            ctx.fillText("Apresenta: Star Fighter", canvas.width / 2, canvas.height / 2 - 25);
+            ctx.fillText("Combate aos Vilões da Humanidade", canvas.width / 2, canvas.height / 2 - 25);
 
             ctx.fillStyle = "#00ffcc"; ctx.fillRect(painel.btnIniciar.x, painel.btnIniciar.y, painel.btnIniciar.l, painel.btnIniciar.a);
             ctx.fillStyle = "#000"; ctx.font = "bold 16px sans-serif"; ctx.textBaseline = "middle";
@@ -457,34 +618,30 @@
         if (estadoJogo === "GAMEOVER") {
             ctx.fillStyle = "rgba(15, 0, 5, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            
             ctx.fillStyle = "#ff2244"; ctx.font = "bold 36px sans-serif";
             ctx.fillText("FIM DE JOGO", canvas.width / 2, canvas.height / 2 - 50);
-            
             ctx.fillStyle = "#ffffff"; ctx.font = "16px sans-serif";
             ctx.fillText("Pontuação Final: " + pontuacao, canvas.width / 2, canvas.height / 2);
 
             ctx.fillStyle = "#00d2ff"; ctx.font = "bold 14px sans-serif";
             ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 + 60);
             ctx.fillStyle = "#666"; ctx.font = "11px sans-serif";
-            ctx.fillText("[Toque na tela para recomeçar]", canvas.width / 2, canvas.height / 2 + 100);
+            ctx.fillText("[Toque na tela para tentar de novo]", canvas.width / 2, canvas.height / 2 + 100);
         }
 
         if (estadoJogo === "VITORIA") {
             ctx.fillStyle = "rgba(5, 25, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            
-            ctx.fillStyle = "#00ffcc"; ctx.font = "bold 38px sans-serif";
-            ctx.fillText("VITÓRIA!", canvas.width / 2, canvas.height / 2 - 70);
-            
-            ctx.fillStyle = "#ffffff"; ctx.font = "18px sans-serif";
-            ctx.fillText("Você salvou o universo!", canvas.width / 2, canvas.height / 2 - 20);
-            ctx.fillText("Placar Final: " + pontuacao, canvas.width / 2, canvas.height / 2 + 15);
+            ctx.fillStyle = "#00ffcc"; ctx.font = "bold 34px sans-serif";
+            ctx.fillText("MISSÃO CONCLUÍDA!", canvas.width / 2, canvas.height / 2 - 60);
+            ctx.fillStyle = "#ffffff"; ctx.font = "16px sans-serif";
+            ctx.fillText("Você sobreviveu aos campos espaciais!", canvas.width / 2, canvas.height / 2 - 10);
+            ctx.fillText("Placar Final: " + pontuacao, canvas.width / 2, canvas.height / 2 + 25);
 
             ctx.fillStyle = "#00d2ff"; ctx.font = "bold 16px sans-serif";
             ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 + 80);
             ctx.fillStyle = "#666"; ctx.font = "11px sans-serif";
-            ctx.fillText("[Toque na tela para reiniciar]", canvas.width / 2, canvas.height / 2 + 120);
+            ctx.fillText("[Toque na tela para ir ao Menu]", canvas.width / 2, canvas.height / 2 + 120);
         }
 
         ctx.restore();
