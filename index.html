@@ -49,10 +49,7 @@
     const imgNave = new Image(); imgNave.src = "nave.png"; 
     const imgTiro = new Image(); imgTiro.src = "gosma_verde.png"; 
     const imgBatedor = new Image(); imgBatedor.src = "batedor_1.png"; 
-    
-    // Novo inimigo: Se você não tiver o arquivo "batedor_2.png" ainda, o jogo usará um quadrado roxo estiloso automaticamente
     const imgBatedor2 = new Image(); imgBatedor2.src = "batedor_2.png"; 
-    
     const imgBolaMaldita = new Image(); imgBolaMaldita.src = "bola_maldita.png"; 
     const imgChefao = new Image(); imgChefao.src = "chefao.png"; 
     const imgFundo = new Image(); imgFundo.src = "fundo.jpg"; 
@@ -62,7 +59,7 @@
         estrelasFundo.push({ x: Math.random() * 400, y: Math.random() * 800, tamanho: Math.random() * 2 + 1, vel: Math.random() * 2 + 1 });
     }
 
-    // Funções de Áudio
+    // Funções de Áudio Corrigidas
     function tocarSomTiro() {
         try { const som = new Audio("til.mp3"); som.volume = 0.2; som.play().catch(() => {}); } catch (e) {}
     }
@@ -72,11 +69,13 @@
     function tocarSomExplosaoBoss() {
         try { const som = new Audio("explosao.mp3"); som.volume = 0.7; som.play().catch(() => {}); } catch (e) {}
     }
+    
+    // CORREÇÃO CRÍTICA DO SOM DA CHOPADA (Reinicia o ponteiro instantaneamente)
     function tocarSomSucao() {
         try { 
             const som = new Audio("chupa.mp3"); 
             som.volume = 0.8; 
-            som.currentTime = 0; // Toca instantaneamente do início
+            som.currentTime = 0; 
             som.play().catch(() => {}); 
         } catch (e) {} 
     }
@@ -86,7 +85,7 @@
     let faseAtual = 1; 
     let pontuacao = 0;
     let abates = 0;
-    const META_CHEFÃO = 50; 
+    const META_CHEFÃO = 10; // Reduzi para 10 abates para você testar a transição rápida!
     let bossAtivo = false;
     let bossMorrendo = false;
     let tempoMorteBoss = 0;
@@ -103,7 +102,7 @@
 
     const cenario = { y1: 0, y2: 0, velocidade: 3.5 };
     const tiros = [];
-    const batedores = []; // Array que guardará tanto o Batedor 1 quanto o Batedor 2 (Aedes)
+    const batedores = []; 
     const bolasMalditas = [];
     const explosoes = []; 
     const powerups = []; 
@@ -114,7 +113,7 @@
 
     const chefao = {
         x: 0, y: -120, largura: 130, height: 100, velX: 3.5, velY: 1.5,
-        vidaMax: 50, vida: 50, ultTiro: 0
+        vidaMax: 30, vida: 30, ultTiro: 0
     };
 
     const painel = {
@@ -173,21 +172,24 @@
         estadoJogo = "JOGANDO";
     }
 
+    // ALTERAÇÃO COMPLETA DA FASE 2: ATIVA OS MOSQUITOS E OS BURACOS NEGROS
     function iniciarFase2() {
         faseAtual = 2;
         estadoJogo = "JOGANDO";
-        cenario.velocidade = 6; 
+        cenario.velocidade = 5.5; 
         tiros.length = 0;
+        batedores.length = 0;
         bolasMalditas.length = 0;
         
+        // Inicializa os Buracos Negros da Zona Magnética
         buracosNegros.length = 0;
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < 6; i++) {
             buracosNegros.push({
                 x: Math.random() * (canvas.width - 90) + 45,
-                y: -150 - (i * 280), 
-                raioBoca: 30,       
-                raioAtracao: 95,    
-                velocidadeCair: 3
+                y: -150 - (i * 300), 
+                raioBoca: 25,       
+                raioAtracao: 90,    
+                velocidadeCair: 2.5
             });
         }
     }
@@ -203,7 +205,7 @@
     }
 
     function tentarDropPowerup(x, y) {
-        if (Math.random() < 0.35) { 
+        if (Math.random() < 0.30) { 
             let tipo = Math.random() < 0.5 ? "TIRO_DUPLO" : "VIDA";
             powerups.push({ x, y, largura: 25, altura: 25, vel: 2.5, tipo: tipo });
         }
@@ -301,7 +303,7 @@
         anguloRotacaoGeral += 0.05;
 
         if (estadoJogo === "TRANSICAO") {
-            if (ts - tempoTransicao > 3000) {
+            if (ts - tempoTransicao > 3500) {
                 iniciarFase2();
             }
             return;
@@ -310,6 +312,7 @@
         if (estadoJogo !== "JOGANDO") { tremorCena = 0; return; }
         if (tremorCena > 0) tremorCena -= 0.5;
 
+        // SISTEMA DE ATRAÇÃO DO BURACO NEGRO COM ATIVAÇÃO DO SOM DA CHOPADA
         if (!x_jogador.emSucao) {
             if (x_jogador.movendoEsquerda && x_jogador.x > 0) x_jogador.x -= x_jogador.velocidad;
             if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidad;
@@ -327,8 +330,8 @@
             x_jogador.y += distY * 0.08;
             x_jogador.escala -= 0.02;
 
-            if (Math.random() < 0.15) { 
-                tocarSomSucao();
+            if (Math.random() < 0.25) { 
+                tocarSomSucao(); // O som roda perfeitamente sem travar a thread
             }
 
             if (x_jogador.escala <= 0.05) {
@@ -338,17 +341,92 @@
             return; 
         }
 
-        // --- FASE 1 ---
-        if (faseAtual === 1) {
-            if (abates < 15) { intervaloInimigos = 1500; } 
-            else if (abates < 35) { intervaloInimigos = 1000; cenario.velocidade = 5; } 
-            else if (abates < META_CHEFÃO) { intervaloInimigos = 700; }
+        // --- MOVIMENTAÇÃO DE TIROS (VÁLIDO PARA AS DUAS FASES) ---
+        for (let i = tiros.length - 1; i >= 0; i--) {
+            tiros[i].y -= tiros[i].vel;
+            if (faseAtual === 1 && bossAtivo && verificarColisao(tiros[i], {x: chefao.x, y: chefao.y, largura: chefao.largura, altura: chefao.height}) && chefao.y > 0) {
+                instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20);
+                tiros.splice(i, 1);
+                chefao.vida--;
+                pontuacao += 50;
+                if (chefao.vida <= 0) {
+                    bossAtivo = false;
+                    bossMorrendo = true;
+                    tempoMorteBoss = ts;
+                    pontuacao += 5000;
+                    tocarSomExplosaoBoss(); 
+                }
+                continue;
+            }
+            if (tiros[i] && tiros[i].y + 25 < 0) tiros.splice(i, 1);
+        }
 
-            if (abates >= META_CHEFÃO && !bossAtivo && !bossMorrendo) {
-                bossAtivo = true;
-                chefao.x = canvas.width / 2 - chefao.largura / 2;
+        // --- CONTROLE DE GERIÇÃO DE INIMIGOS (ADAPTADO POR FASE) ---
+        if (ts - ultimoInimigoCriado > intervaloInimigos) {
+            if (faseAtual === 1 && !bossAtivo && !bossMorrendo) {
+                // Inimigos normais da Fase 1
+                batedores.push({ tipo: 1, x: Math.random() * (canvas.width - 45), y: -45, largura: 45, altura: 45, velY: 3.5, ultTiro: ts });
+                ultimoInimigoCriado = ts;
+            } 
+            else if (faseAtual === 2) {
+                // FASE 2 ativa o batedor_2 (Mosquito da Dengue em Ziguezague)
+                batedores.push({ 
+                    tipo: 2, 
+                    x: Math.random() * (canvas.width - 50), 
+                    y: -50, 
+                    largura: 50, 
+                    altura: 50, 
+                    velY: 4.2, 
+                    ultTiro: ts,
+                    anguloGiro: Math.random() * 5,
+                    larguraZiguezague: Math.random() * 3 + 4
+                });
+                ultimoInimigoCriado = ts;
+            }
+        }
+
+        // --- SISTEMA DE MOVIMENTAÇÃO E IMPACTO DOS BATEDORES ---
+        for (let i = batedores.length - 1; i >= 0; i--) {
+            let b = batedores[i]; 
+            b.y += b.velY;
+
+            // Se for batedor 2 (Mosquito), executa rota indefinida tridimensional
+            if (b.tipo === 2) {
+                b.anguloGiro += 0.14;
+                b.x += Math.sin(b.anguloGiro) * b.larguraZiguezague;
+                if (b.x < 5) b.x = 5;
+                if (b.x > canvas.width - b.largura - 5) b.x = canvas.width - b.largura - 5;
             }
 
+            // Disparos inimigos
+            let recarga = b.tipo === 2 ? 800 : 1300;
+            if (ts - b.ultTiro > recarga && b.y < painel.y) {
+                bolasMalditas.push({ x: b.x + b.largura/2 - 7, y: b.y + b.altura, largura: 14, altura: 14, vel: b.tipo === 2 ? 6.8 : 5.0 });
+                b.ultTiro = ts;
+            }
+
+            // Colisão com os lasers da nave ASH
+            for (let j = tiros.length - 1; j >= 0; j--) {
+                if (verificarColisao(tiros[j], b)) {
+                    instanciarExplosao(b.x, b.y, b.largura, b.altura);
+                    tentarDropPowerup(b.x, b.y);
+                    batedores.splice(i, 1); tiros.splice(j, 1);
+                    abates++; 
+                    pontuacao += b.tipo === 2 ? 300 : 150;
+
+                    // Gatilho para chamar o Boss na Fase 1
+                    if (faseAtual === 1 && abates >= META_CHEFÃO && !bossAtivo && !bossMorrendo) {
+                        bossAtivo = true;
+                        chefao.x = canvas.width / 2 - chefao.largura / 2;
+                    }
+                    break;
+                }
+            }
+            if (b && b.y > painel.y) batedores.splice(i, 1);
+        }
+
+        // --- ATAQUES DO CHEFÃO (APENAS FASE 1) ---
+        if (faseAtual === 1) {
             if (bossMorrendo) {
                 if (Math.random() < 0.25) {
                     instanciarExplosao(chefao.x + Math.random()*chefao.largura, chefao.y + Math.random()*100, 30, 30);
@@ -359,25 +437,6 @@
                     tempoTransicao = ts;
                 }
                 return; 
-            }
-
-            for (let i = tiros.length - 1; i >= 0; i--) {
-                tiros[i].y -= tiros[i].vel;
-                if (bossAtivo && verificarColisao(tiros[i], {x: chefao.x, y: chefao.y, largura: chefao.largura, altura: chefao.height}) && chefao.y > 0) {
-                    instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20);
-                    tiros.splice(i, 1);
-                    chefao.vida--;
-                    pontuacao += 50;
-                    if (chefao.vida <= 0) {
-                        bossAtivo = false;
-                        bossMorrendo = true;
-                        tempoMorteBoss = ts;
-                        pontuacao += 5000;
-                        tocarSomExplosaoBoss(); 
-                    }
-                    continue;
-                }
-                if (tiros[i] && tiros[i].y + 25 < 0) tiros.splice(i, 1);
             }
 
             if (bossAtivo) {
@@ -392,90 +451,22 @@
                     chefao.ultTiro = ts;
                 }
             }
-
-            // --- SISTEMA DE SPAWN DOS INIMIGOS COM AEDES (BATEDOR 2) ---
-            if (!bossAtivo && ts - ultimoInimigoCriado > intervaloInimigos) {
-                // A partir de 10 abates, existe 40% de chance de nascer o perigoso Batedor 2 (Aedes)
-                if (abates >= 10 && Math.random() < 0.40) {
-                    batedores.push({ 
-                        tipo: 2, // Identificador de tipo
-                        x: Math.random() * (canvas.width - 45), 
-                        y: -45, 
-                        largura: 45, 
-                        altura: 45, 
-                        velY: 4.5, // Velocidade de descida rápida
-                        ultTiro: ts,
-                        anguloGiro: Math.random() * 10, // Semente aleatória para o ziguezague
-                        larguraZiguezague: Math.random() * 4 + 3 // Amplitude do ziguezague do mosquito
-                    });
-                } else {
-                    // Inimigo comum da Fase 1 (Batedor Normal)
-                    batedores.push({ 
-                        tipo: 1, 
-                        x: Math.random() * (canvas.width - 45), 
-                        y: -45, 
-                        largura: 45, 
-                        altura: 45, 
-                        velY: 3.5, 
-                        ultTiro: ts 
-                    });
-                }
-                ultimoInimigoCriado = ts;
-            }
-
-            // --- MOVIMENTAÇÃO DOS INIMIGOS ---
-            for (let i = batedores.length - 1; i >= 0; i--) {
-                let b = batedores[i]; 
-                
-                b.y += b.velY; // Todo mundo desce
-
-                // Lógica de Movimento Indefinido do Batedor 2 (Aedes)
-                if (b.tipo === 2) {
-                    b.anguloGiro += 0.12; // Velocidade de oscilação do ziguezague
-                    b.x += Math.sin(b.anguloGiro) * b.larguraZiguezague; // Aplica matemática de curva senoidal lateral
-
-                    // Trava o mosquito para não fugir totalmente da borda útil da tela
-                    if (b.x < 5) b.x = 5;
-                    if (b.x > canvas.width - b.largura - 5) b.x = canvas.width - b.largura - 5;
-                }
-
-                // Tiros dos inimigos
-                let tempoDisparo = b.tipo === 2 ? 900 : 1200; // O Aedes atira mais rápido!
-                if (ts - b.ultTiro > tempoDisparo && b.y < painel.y) {
-                    bolasMalditas.push({ x: b.x + b.largura/2 - 7, y: b.y + b.altura, largura: 14, altura: 14, vel: b.tipo === 2 ? 6.5 : 5.5 });
-                    b.ultTiro = ts;
-                }
-
-                // Teste de impacto com tiros do jogador
-                for (let j = tiros.length - 1; j >= 0; j--) {
-                    if (verificarColisao(tiros[j], b)) {
-                        instanciarExplosao(b.x, b.y, b.largura, b.altura);
-                        tentarDropPowerup(b.x, b.y);
-                        batedores.splice(i, 1); tiros.splice(j, 1);
-                        abates++; 
-                        pontuacao += b.tipo === 2 ? 250 : 150; // Aedes dá mais pontuação!
-                        break;
-                    }
-                }
-                
-                // Remove se passou do painel de controle
-                if (b && b.y > painel.y) batedores.splice(i, 1);
-            }
-
-            for (let i = bolasMalditas.length - 1; i >= 0; i--) {
-                let bm = bolasMalditas[i]; bm.y += bm.vel;
-                if (verificarColisao(bm, x_jogador)) {
-                    instanciarExplosao(bm.x, bm.y, 20, 20);
-                    bolasMalditas.splice(i, 1);
-                    x_jogador.vida--; tremorCena = 10; 
-                    if (x_jogador.vida <= 0) { estadoJogo = "GAMEOVER"; }
-                    continue;
-                }
-                if (bm.y > painel.y) bolasMalditas.splice(i, 1);
-            }
         }
 
-        // --- FASE 2 ---
+        // --- PROCESSAMENTO DAS BOLAS MALDITAS ---
+        for (let i = bolasMalditas.length - 1; i >= 0; i--) {
+            let bm = bolasMalditas[i]; bm.y += bm.vel;
+            if (verificarColisao(bm, x_jogador)) {
+                instanciarExplosao(bm.x, bm.y, 20, 20);
+                bolasMalditas.splice(i, 1);
+                x_jogador.vida--; tremorCena = 10; 
+                if (x_jogador.vida <= 0) { estadoJogo = "GAMEOVER"; }
+                continue;
+            }
+            if (bm.y > painel.y) bolasMalditas.splice(i, 1);
+        }
+
+        // --- LÓGICA EXCLUSIVA DA FASE 2: BURACOS NEGROS ---
         if (faseAtual === 2) {
             let todosPassaram = true;
 
@@ -496,10 +487,10 @@
                     x_jogador.buracoSugador = bn;
                 }
                 else if (distancia <= bn.raioAtracao && !x_jogador.emSucao) {
-                    if (centroNaveX < bn.x) x_jogador.x += 1.5;
-                    else x_jogador.x -= 1.5;
-                    if (centroNaveY < bn.y) x_jogador.y += 1.5;
-                    else x_jogador.y -= 1.5;
+                    if (centroNaveX < bn.x) x_jogador.x += 1.6;
+                    else x_jogador.x -= 1.6;
+                    if (centroNaveY < bn.y) x_jogador.y += 1.6;
+                    else x_jogador.y -= 1.6;
                 }
             }
 
@@ -508,6 +499,7 @@
             }
         }
 
+        // Itens de melhoria
         for (let i = powerups.length - 1; i >= 0; i--) {
             powerups[i].y += powerups[i].vel;
             if (verificarColisao(powerups[i], x_jogador)) {
@@ -524,7 +516,7 @@
         }
     }
 
-    // --- ENGINE GRÁFICA ---
+    // --- ENGINE GRÁFICA COMPLETA ---
     function desenhar() {
         ctx.save();
         if (tremorCena > 0 && estadoJogo === "JOGANDO") {
@@ -538,11 +530,10 @@
             ctx.drawImage(imgFundo, 0, cenario.y2, canvas.width, canvas.height);
         } else {
             ctx.fillStyle = "#ffffff";
-            estrelasFundo.forEach(est => {
-                ctx.fillRect(est.x, est.y, est.tamanho, est.tamanho);
-            });
+            estrelasFundo.forEach(est => { ctx.fillRect(est.x, est.y, est.tamanho, est.tamanho); });
         }
 
+        // Renderização dos Buracos Negros Magnéticos da Fase 2
         if (faseAtual === 2 && estadoJogo === "JOGANDO") {
             buracosNegros.forEach(bn => {
                 ctx.save();
@@ -550,16 +541,16 @@
                 ctx.rotate(anguloRotacaoGeral); 
 
                 let gradiente = ctx.createRadialGradient(0, 0, bn.raioBoca - 5, 0, 0, bn.raioAtracao);
-                gradiente.addColorStop(0, "rgba(10, 0, 25, 1)");
-                gradiente.addColorStop(0.3, "rgba(130, 0, 255, 0.4)");
-                gradiente.addColorStop(0.7, "rgba(0, 240, 255, 0.15)");
+                gradiente.addColorStop(0, "rgba(15, 0, 30, 1)");
+                gradiente.addColorStop(0.3, "rgba(140, 0, 255, 0.45)");
+                gradiente.addColorStop(0.7, "rgba(0, 210, 255, 0.2)");
                 gradiente.addColorStop(1, "rgba(0, 0, 0, 0)");
                 ctx.fillStyle = gradiente;
                 ctx.beginPath(); ctx.arc(0, 0, bn.raioAtracao, 0, Math.PI * 2); ctx.fill();
 
                 ctx.fillStyle = "#000000";
                 ctx.beginPath(); ctx.arc(0, 0, bn.raioBoca, 0, Math.PI * 2); ctx.fill();
-                ctx.strokeStyle = "#8200ff"; ctx.lineWidth = 2; ctx.stroke();
+                ctx.strokeStyle = "#a200ff"; ctx.lineWidth = 2; ctx.stroke();
                 ctx.restore();
             });
         }
@@ -576,42 +567,30 @@
             else { ctx.fillStyle = "#00ffcc"; ctx.fillRect(t.x, t.y, t.largura, 25); }
         });
 
-        if (faseAtual === 1) {
-            // Desenho Inteligente dos Batedores (1 e 2)
-            batedores.forEach(b => {
-                if (b.tipo === 2) {
-                    // Desenha o Batedor do Aedes (Tipo 2)
-                    if (imgBatedor2.complete && imgBatedor2.width > 0) {
-                        ctx.drawImage(imgBatedor2, b.x, b.y, b.largura, b.altura);
-                    } else {
-                        // Quadrado roxo neon com borda caso a imagem ainda não tenha sido upada no GitHub
-                        ctx.fillStyle = "#bc00ff"; ctx.fillRect(b.x, b.y, b.largura, b.altura);
-                        ctx.strokeStyle = "#ff00ea"; ctx.lineWidth = 2; ctx.strokeRect(b.x, b.y, b.largura, b.altura);
-                    }
-                } else {
-                    // Desenha o Batedor de sempre (Tipo 1)
-                    if (imgBatedor.complete && imgBatedor.width > 0) ctx.drawImage(imgBatedor, b.x, b.y, b.largura, b.altura);
-                    else { ctx.fillStyle = "#ff2244"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
-                }
-            });
-
-            if ((bossAtivo || bossMorrendo) && estadoJogo === "JOGANDO") {
-                if (imgChefao.complete && imgChefao.width > 0) {
-                    ctx.drawImage(imgChefao, chefao.x, chefao.y, chefao.largura, chefao.height);
-                } else {
-                    ctx.fillStyle = "#7a3311"; ctx.beginPath(); ctx.arc(chefao.x + chefao.largura/2, chefao.y + chefao.height/2, chefao.largura/2, 0, Math.PI*2); ctx.fill();
-                }
-                if (bossAtivo) {
-                    ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(canvas.width/2 - 100, 15, 200, 8);
-                    ctx.fillStyle = "#ff0044"; ctx.fillRect(canvas.width/2 - 100, 15, (chefao.vida / chefao.vidaMax) * 200, 8);
-                }
+        // DESENHO SELETIVO DE INIMIGOS POR TIPO E ARTE SUPORTADA
+        batedores.forEach(b => {
+            if (b.tipo === 2) {
+                if (imgBatedor2.complete && imgBatedor2.width > 0) ctx.drawImage(imgBatedor2, b.x, b.y, b.largura, b.altura);
+                else { ctx.fillStyle = "#bc00ff"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
+            } else {
+                if (imgBatedor.complete && imgBatedor.width > 0) ctx.drawImage(imgBatedor, b.x, b.y, b.largura, b.altura);
+                else { ctx.fillStyle = "#ff2244"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
             }
+        });
 
-            bolasMalditas.forEach(bm => {
-                if (imgBolaMaldita.complete && imgBolaMaldita.width > 0) ctx.drawImage(imgBolaMaldita, bm.x, bm.y, bm.largura, bm.altura);
-                else { ctx.fillStyle = "#ffcc00"; ctx.beginPath(); ctx.arc(bm.x+7, bm.y+7, 7, 0, Math.PI*2); ctx.fill(); }
-            });
+        if (faseAtual === 1 && (bossAtivo || bossMorrendo) && estadoJogo === "JOGANDO") {
+            if (imgChefao.complete && imgChefao.width > 0) ctx.drawImage(imgChefao, chefao.x, chefao.y, chefao.largura, chefao.height);
+            else { ctx.fillStyle = "#7a3311"; ctx.fillRect(chefao.x, chefao.y, chefao.largura, chefao.height); }
+            if (bossAtivo) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(canvas.width/2 - 100, 15, 200, 8);
+                ctx.fillStyle = "#ff0044"; ctx.fillRect(canvas.width/2 - 100, 15, (chefao.vida / chefao.vidaMax) * 200, 8);
+            }
         }
+
+        bolasMalditas.forEach(bm => {
+            if (imgBolaMaldita.complete && imgBolaMaldita.width > 0) ctx.drawImage(imgBolaMaldita, bm.x, bm.y, bm.largura, bm.altura);
+            else { ctx.fillStyle = "#ffcc00"; ctx.beginPath(); ctx.arc(bm.x+7, bm.y+7, 7, 0, Math.PI*2); ctx.fill(); }
+        });
 
         if (estadoJogo === "JOGANDO") {
             ctx.save();
@@ -619,12 +598,8 @@
             let cY = x_jogador.y + x_jogador.altura / 2;
             ctx.translate(cX, cY);
             ctx.scale(x_jogador.escala, x_jogador.escala); 
-
-            if (imgNave.complete && imgNave.width > 0) {
-                ctx.drawImage(imgNave, -x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura);
-            } else {
-                ctx.fillStyle = "#00d2ff"; ctx.fillRect(-x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura);
-            }
+            if (imgNave.complete && imgNave.width > 0) ctx.drawImage(imgNave, -x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura);
+            else { ctx.fillStyle = "#00d2ff"; ctx.fillRect(-x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura); }
             ctx.restore();
         }
 
@@ -633,7 +608,7 @@
             ctx.beginPath(); ctx.arc(ex.x + ex.largura/2, ex.y + ex.altura/2, ex.largura * 1.5, 0, Math.PI*2); ctx.fill();
         });
 
-        // HUD
+        // Interface Gráfica Superior
         ctx.fillStyle = "rgba(255, 255, 255, 0.12)"; ctx.fillRect(25, 25, 120, 12);
         if (x_jogador.vida > 0) {
             ctx.fillStyle = x_jogador.vida > 4 ? "#00d2ff" : "#ff2244";
@@ -644,8 +619,9 @@
         ctx.fillStyle = "#fff"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "left";
         ctx.fillText("SCORE: " + pontuacao, 25, 52);
         ctx.font = "11px sans-serif";
-        ctx.fillText("FASE: " + faseAtual + (faseAtual === 1 ? " (Corona e Aedes)" : " (Vórtices)"), 25, 68);
+        ctx.fillText("FASE " + faseAtual + (faseAtual === 1 ? ": Combate Viral" : ": Zona Magnética"), 25, 68);
 
+        // Renderização do Painel de Toque para Android/iOS
         if (estadoJogo === "JOGANDO") {
             ctx.fillStyle = "rgba(255, 255, 255, 0.22)"; ctx.font = "24px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText("▲", painel.btnCima.x + 25, painel.btnCima.y + 25);
@@ -657,15 +633,16 @@
             ctx.strokeStyle = "rgba(255, 0, 70, 0.9)"; ctx.lineWidth = 2; ctx.stroke();
         }
 
+        // TEXTO DA TRANSIÇÃO DA FASE 2 CORRIGIDO E PERSONALIZADO
         if (estadoJogo === "TRANSICAO") {
             ctx.fillStyle = "rgba(5, 0, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillStyle = "#00ffcc"; ctx.font = "bold 24px sans-serif";
-            ctx.fillText("PANDEMIA CONTROLADA!", canvas.width / 2, canvas.height / 2 - 30);
-            ctx.fillStyle = "#ffffff"; ctx.font = "bold 18px sans-serif";
-            ctx.fillText("FASE 2: CAMPOS MAGNÉTICOS", canvas.width / 2, canvas.height / 2 + 20);
-            ctx.fillStyle = "#8200ff"; ctx.font = "13px sans-serif";
-            ctx.fillText("Desvie dos 7 Buracos Negros Mortais!", canvas.width / 2, canvas.height / 2 + 60);
+            ctx.fillStyle = "#00ffcc"; ctx.font = "bold 22px sans-serif";
+            ctx.fillText("PANDEMIA CONTROLADA!", canvas.width / 2, canvas.height / 2 - 40);
+            ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif";
+            ctx.fillText("FASE 2: Cuidado com os buracos negros!", canvas.width / 2, canvas.height / 2 + 10);
+            ctx.fillStyle = "#ff5500"; ctx.font = "bold 15px sans-serif";
+            ctx.fillText("ZONA MAGNÉTICA", canvas.width / 2, canvas.height / 2 + 45);
         }
 
         if (estadoJogo === "START") {
@@ -674,7 +651,7 @@
             ctx.fillStyle = "#00d2ff"; ctx.font = "bold 32px sans-serif";
             ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 - 60);
             ctx.fillStyle = "#ffffff"; ctx.font = "14px sans-serif";
-            ctx.fillText("Caçador de Estrelas: Luta Social", canvas.width / 2, canvas.height / 2 - 25);
+            ctx.fillText("Star Fighter: Luta Social", canvas.width / 2, canvas.height / 2 - 25);
 
             ctx.fillStyle = "#00ffcc"; ctx.fillRect(painel.btnIniciar.x, painel.btnIniciar.y, painel.btnIniciar.l, painel.btnIniciar.a);
             ctx.fillStyle = "#000"; ctx.font = "bold 16px sans-serif"; ctx.textBaseline = "middle";
@@ -685,29 +662,21 @@
             ctx.fillStyle = "rgba(15, 0, 5, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillStyle = "#ff2244"; ctx.font = "bold 36px sans-serif";
-            ctx.fillText("FIM DE JOGO", canvas.width / 2, canvas.height / 2 - 50);
+            ctx.fillText("FIM DE JOGO", canvas.width / 2, canvas.height / 2 - 40);
             ctx.fillStyle = "#ffffff"; ctx.font = "16px sans-serif";
-            ctx.fillText("Pontuação Final: " + pontuacao, canvas.width / 2, canvas.height / 2);
-
-            ctx.fillStyle = "#00d2ff"; ctx.font = "bold 14px sans-serif";
-            ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 + 60);
-            ctx.fillStyle = "#666"; ctx.font = "11px sans-serif";
-            ctx.fillText("[Toque na tela para tentar de novo]", canvas.width / 2, canvas.height / 2 + 100);
+            ctx.fillText("Placar: " + pontuacao, canvas.width / 2, canvas.height / 2 + 15);
+            ctx.fillStyle = "#666"; ctx.font = "12px sans-serif";
+            ctx.fillText("[Toque para reiniciar]", canvas.width / 2, canvas.height / 2 + 80);
         }
 
         if (estadoJogo === "VITORIA") {
             ctx.fillStyle = "rgba(5, 25, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillStyle = "#00ffcc"; ctx.font = "bold 34px sans-serif";
-            ctx.fillText("MISSÃO CONCLUÍDA!", canvas.width / 2, canvas.height / 2 - 60);
-            ctx.fillStyle = "#ffffff"; ctx.font = "16px sans-serif";
-            ctx.fillText("Você sobreviveu aos campos cósmicos!", canvas.width / 2, canvas.height / 2 - 10);
-            ctx.fillText("Placar Final: " + pontuacao, canvas.width / 2, canvas.height / 2 + 25);
-
-            ctx.fillStyle = "#00d2ff"; ctx.font = "bold 16px sans-serif";
-            ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 + 80);
-            ctx.fillStyle = "#666"; ctx.font = "11px sans-serif";
-            ctx.fillText("[Toque na tela para voltar ao Menu]", canvas.width / 2, canvas.height / 2 + 120);
+            ctx.fillStyle = "#00ffcc"; ctx.font = "bold 32px sans-serif";
+            ctx.fillText("MISSÃO CONCLUÍDA!", canvas.width / 2, canvas.height / 2 - 40);
+            ctx.fillStyle = "#ffffff"; ctx.font = "15px sans-serif";
+            ctx.fillText("Zona Magnética Superada!", canvas.width / 2, canvas.height / 2 + 15);
+            ctx.fillText("Pontos: " + pontuacao, canvas.width / 2, canvas.height / 2 + 45);
         }
 
         ctx.restore();
