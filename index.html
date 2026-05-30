@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Star Fighter - Ferratech Jogos Edição Especial</title>
+    <title>Star Fighter - Ferratech Jogos Edição Especial Corrigida</title>
     <style>
-        /* Limpeza de elementos extras */
         .bg-photo-overlay, .bg-photo-container, .centered-top-placeholder, 
         .centered-top-container, header, .skip-navigation, .sidebar-container {
             display: none !important; height: 0 !important; padding: 0 !important; margin: 0 !important;
@@ -62,17 +61,17 @@
     }
 
     // --- VARIÁVEIS DE ESTADO ---
-    let estadoJogo = "START"; // START, JOGANDO, GAMEOVER, VITORIA
+    let estadoJogo = "START"; 
     let pontuacao = 0;
     let abates = 0;
     const META_CHEFÃO = 50; 
     let bossAtivo = false;
-    let tremorCena = 0; // Controle de tremor de tela
+    let tremorCena = 0; 
 
     const x_jogador = { 
         x: 0, y: 0, largura: 55, altura: 55, velocidad: 7,
         movendoEsquerda: false, movendoDireita: false, movendoCima: false, movendoBaixo: false,
-        vidaMax: 10, vida: 10, tipoTiro: "NORMAL" // "NORMAL" ou "DUPLO"
+        vidaMax: 10, vida: 10, tipoTiro: "NORMAL" 
     };
 
     const cenario = { y1: 0, y2: 0, velocidade: 3.5 };
@@ -80,7 +79,7 @@
     const batedores = [];
     const bolasMalditas = [];
     const explosoes = []; 
-    const powerups = []; // Array para os itens caídos
+    const powerups = []; 
 
     let ultimoInimigoCriado = 0;
     let intervaloInimigos = 1600; 
@@ -98,7 +97,7 @@
         btnCima: { x: 65, y: 0, l: 50, a: 50 },
         btnBaixo: { x: 65, y: 0, l: 50, a: 50 },
         btnAtirar: { x: 0, y: 0, raio: 40 },
-        btnIniciar: { x: 0, y: 0, l: 180, a: 50 } // Botão na tela de Início
+        btnIniciar: { x: 0, y: 0, l: 180, a: 50 } 
     };
 
     function configurarPainel() {
@@ -111,7 +110,6 @@
         painel.btnAtirar.x = canvas.width - painel.btnAtirar.raio - 20;
         painel.btnAtirar.y = painel.y + (painel.altura / 2);
 
-        // Posiciona botão iniciar centralizado
         painel.btnIniciar.x = canvas.width / 2 - painel.btnIniciar.l / 2;
         painel.btnIniciar.y = canvas.height / 2 + 60;
 
@@ -155,7 +153,7 @@
     }
 
     function tentarDropPowerup(x, y) {
-        if (Math.random() < 0.35) { // 35% de chance de cair item
+        if (Math.random() < 0.35) { 
             let tipo = Math.random() < 0.5 ? "TIRO_DUPLO" : "VIDA";
             powerups.push({ x, y, largura: 25, altura: 25, vel: 2.5, tipo: tipo });
         }
@@ -229,28 +227,30 @@
 
     function atirar() {
         if (estadoJogo !== "JOGANDO") return;
+        // CORRIGIDO: Atributo alterado de height para altura em todas as instâncias de tiro
         if (x_jogador.tipoTiro === "DUPLO") {
-            tiros.push({ x: x_jogador.x + 5, y: x_jogador.y - 25, largura: 10, height: 25, vel: 13 });
-            tiros.push({ x: x_jogador.x + x_jogador.largura - 15, y: x_jogador.y - 25, largura: 10, height: 25, vel: 13 });
+            tiros.push({ x: x_jogador.x + 5, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 13 });
+            tiros.push({ x: x_jogador.x + x_jogador.largura - 15, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 13 });
         } else {
-            tiros.push({ x: x_jogador.x + x_jogador.largura/2 - 5, y: x_jogador.y - 25, largura: 10, height: 25, vel: 12 });
+            tiros.push({ x: x_jogador.x + x_jogador.largura/2 - 5, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 12 });
         }
         tocarSomTiro();
     }
 
     // --- MÁQUINA DE LÓGICA ---
     function atualizar(ts) {
-        // Movimentação do fundo contínua independente do estado
         cenario.y1 += cenario.velocidade; cenario.y2 += cenario.velocidade;
         if (cenario.y1 >= canvas.height) cenario.y1 = -canvas.height;
         if (cenario.y2 >= canvas.height) cenario.y2 = -canvas.height;
 
-        if (estadoJogo !== "JOGANDO") return;
+        // Se o jogo acabou ou venceu, o tremor zera e para na hora
+        if (estadoJogo !== "JOGANDO") {
+            tremorCena = 0;
+            return;
+        }
 
-        // Diminui o tremor de tela progressivamente
         if (tremorCena > 0) tremorCena -= 0.5;
 
-        // Ondas de Inimigos Dinâmicas com base nos abates
         if (abates < 15) { intervaloInimigos = 1600; } 
         else if (abates < 35) { intervaloInimigos = 1100; cenario.velocidade = 5; } 
         else if (abates < META_CHEFÃO) { intervaloInimigos = 750; }
@@ -265,7 +265,6 @@
             chefao.x = canvas.width / 2 - chefao.largura / 2;
         }
 
-        // Atualização de Power-ups
         for (let i = powerups.length - 1; i >= 0; i--) {
             powerups[i].y += powerups[i].vel;
             if (verificarColisao(powerups[i], x_jogador)) {
@@ -277,7 +276,7 @@
             if (powerups[i] && powerups[i].y > painel.y) powerups.splice(i, 1);
         }
 
-        // Balas do Jogador
+        // Balas do Jogador (Mecânica corrigida e funcional!)
         for (let i = tiros.length - 1; i >= 0; i--) {
             tiros[i].y -= tiros[i].vel;
 
@@ -296,7 +295,6 @@
             if (tiros[i] && tiros[i].y + 25 < 0) tiros.splice(i, 1);
         }
 
-        // Lógica do Boss
         if (bossAtivo) {
             if (chefao.y < 60) chefao.y += chefao.velY;
             else {
@@ -310,24 +308,24 @@
             }
         }
 
-        // Nascimentos Normais
         if (!bossAtivo && ts - ultimoInimigoCriado > intervaloInimigos) {
             batedores.push({ x: Math.random() * (canvas.width - 45), y: -45, largura: 45, altura: 45, vel: 3.5, ultTiro: ts });
             ultimoInimigoCriado = ts;
         }
 
-        // Movimento Batedores
         for (let i = batedores.length - 1; i >= 0; i--) {
             let b = batedores[i]; b.y += b.vel;
             if (ts - b.ultTiro > 1200 && b.y < painel.y) {
                 bolasMalditas.push({ x: b.x + b.largura/2 - 7, y: b.y + b.altura, largura: 14, altura: 14, vel: 5.5 });
                 b.ultTiro = ts;
             }
+            // Colisão do tiro acertando e abatendo o inimigo
             for (let j = tiros.length - 1; j >= 0; j--) {
                 if (verificarColisao(tiros[j], b)) {
                     instanciarExplosao(b.x, b.y, b.largura, b.altura);
                     tentarDropPowerup(b.x, b.y);
-                    batedores.splice(i, 1); tiros.splice(j, 1);
+                    batedores.splice(i, 1); 
+                    tiros.splice(j, 1);
                     abates++;
                     pontuacao += 150;
                     break;
@@ -336,14 +334,13 @@
             if (b && b.y > painel.y) batedores.splice(i, 1);
         }
 
-        // Tiros Inimigos Caindo
         for (let i = bolasMalditas.length - 1; i >= 0; i--) {
             let bm = bolasMalditas[i]; bm.y += bm.vel;
             if (verificarColisao(bm, x_jogador)) {
                 instanciarExplosao(bm.x, bm.y, 20, 20);
                 bolasMalditas.splice(i, 1);
                 x_jogador.vida--;
-                tremorCena = 10; // Sacode a tela
+                tremorCena = 10; 
                 if (x_jogador.vida <= 0) { 
                     x_jogador.vida = 0;
                     instanciarExplosao(x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura);
@@ -354,7 +351,6 @@
             if (bm.y > painel.y) bolasMalditas.splice(i, 1);
         }
 
-        // Animação de Explosão
         for (let i = explosoes.length - 1; i >= 0; i--) {
             explosoes[i].vida--;
             if (explosoes[i].vida <= 0) explosoes.splice(i, 1);
@@ -364,8 +360,7 @@
     // --- ENGINE DE ARTE ---
     function desenhar() {
         ctx.save();
-        // Executa efeito tremor de tela caso ativo
-        if (tremorCena > 0) {
+        if (tremorCena > 0 && estadoJogo === "JOGANDO") {
             let dx = (Math.random() - 0.5) * tremorCena;
             let dy = (Math.random() - 0.5) * tremorCena;
             ctx.translate(dx, dy);
@@ -373,13 +368,11 @@
 
         ctx.fillStyle = "#090912"; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Cenário Estelar
         if (imgFundo.complete && imgFundo.width > 0) {
             ctx.drawImage(imgFundo, 0, cenario.y1, canvas.width, canvas.height);
             ctx.drawImage(imgFundo, 0, cenario.y2, canvas.width, canvas.height);
         }
 
-        // Desenhar Itens Caídos (Power-ups)
         powerups.forEach(p => {
             ctx.fillStyle = p.tipo === "TIRO_DUPLO" ? "#00d2ff" : "#00ff66";
             ctx.beginPath(); ctx.arc(p.x + 12, p.y + 12, 11, 0, Math.PI*2); ctx.fill();
@@ -397,7 +390,6 @@
             else { ctx.fillStyle = "#ff2244"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
         });
 
-        // Desenho Imponente do Boss
         if (bossAtivo && estadoJogo === "JOGANDO") {
             if (imgChefao.complete && imgChefao.width > 0) {
                 ctx.drawImage(imgChefao, chefao.x, chefao.y, chefao.largura, chefao.altura);
@@ -405,7 +397,6 @@
                 ctx.fillStyle = "#990022"; ctx.fillRect(chefao.x, chefao.y, chefao.largura, chefao.altura);
                 ctx.fillStyle = "#ff0044"; ctx.fillRect(chefao.x + 20, chefao.y + chefao.altura - 15, chefao.largura - 40, 15);
             }
-            // HUD de vida do Boss
             ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(canvas.width/2 - 100, 15, 200, 8);
             ctx.fillStyle = "#ff0044"; ctx.fillRect(canvas.width/2 - 100, 15, (chefao.vida / chefao.vidaMax) * 200, 8);
         }
@@ -438,7 +429,6 @@
         ctx.font = "11px sans-serif";
         ctx.fillText("ALVOS: " + abates + (bossAtivo ? " [BOSS]" : " / " + META_CHEFÃO), 25, 68);
 
-        // CONTROLES TÁTEIS (SÓ APARECEM JOGANDO)
         if (estadoJogo === "JOGANDO") {
             ctx.fillStyle = "rgba(255, 255, 255, 0.22)"; ctx.font = "24px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText("▲", painel.btnCima.x + 25, painel.btnCima.y + 25);
@@ -450,44 +440,36 @@
             ctx.strokeStyle = "rgba(255, 0, 70, 0.9)"; ctx.lineWidth = 2; ctx.stroke();
         }
 
-        // --- PAINÉIS DE MARKETING FERRATECH JOGOS ---
-        
-        // 1. TELA DE INÍCIO (START)
+        // --- PAINÉIS DE MARKETING FIXOS (SEM TREMOR) ---
         if (estadoJogo === "START") {
             ctx.fillStyle = "rgba(5, 5, 15, 0.9)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
             ctx.textAlign = "center";
             ctx.fillStyle = "#00d2ff"; ctx.font = "bold 32px sans-serif";
             ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 - 60);
-            
             ctx.fillStyle = "#ffffff"; ctx.font = "14px sans-serif";
             ctx.fillText("Apresenta: Star Fighter", canvas.width / 2, canvas.height / 2 - 25);
 
-            // Desenho do botão iniciar
             ctx.fillStyle = "#00ffcc"; ctx.fillRect(painel.btnIniciar.x, painel.btnIniciar.y, painel.btnIniciar.l, painel.btnIniciar.a);
             ctx.fillStyle = "#000"; ctx.font = "bold 16px sans-serif"; ctx.textBaseline = "middle";
             ctx.fillText("INICIAR JOGO", canvas.width / 2, painel.btnIniciar.y + 25);
         }
 
-        // 2. TELA DE GAME OVER
         if (estadoJogo === "GAMEOVER") {
-            ctx.fillStyle = "rgba(15, 0, 5, 0.92)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "rgba(15, 0, 5, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
             
             ctx.fillStyle = "#ff2244"; ctx.font = "bold 36px sans-serif";
-            ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 50);
+            ctx.fillText("FIM DE JOGO", canvas.width / 2, canvas.height / 2 - 50);
             
             ctx.fillStyle = "#ffffff"; ctx.font = "16px sans-serif";
             ctx.fillText("Pontuação Final: " + pontuacao, canvas.width / 2, canvas.height / 2);
 
-            // Merchandising de Fechamento
-            ctx.fillStyle = "rgba(0, 210, 255, 0.3)"; ctx.font = "12px sans-serif";
-            ctx.fillText("Desenvolvido por FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 + 60);
-            ctx.fillStyle = "#888"; ctx.font = "11px sans-serif";
-            ctx.fillText("[Toque na tela para reiniciar]", canvas.width / 2, canvas.height / 2 + 100);
+            ctx.fillStyle = "#00d2ff"; ctx.font = "bold 14px sans-serif";
+            ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 + 60);
+            ctx.fillStyle = "#666"; ctx.font = "11px sans-serif";
+            ctx.fillText("[Toque na tela para recomeçar]", canvas.width / 2, canvas.height / 2 + 100);
         }
 
-        // 3. TELA DE VITÓRIA
         if (estadoJogo === "VITORIA") {
             ctx.fillStyle = "rgba(5, 25, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -499,11 +481,10 @@
             ctx.fillText("Você salvou o universo!", canvas.width / 2, canvas.height / 2 - 20);
             ctx.fillText("Placar Final: " + pontuacao, canvas.width / 2, canvas.height / 2 + 15);
 
-            // Assinatura Ferratech de Sucesso
             ctx.fillStyle = "#00d2ff"; ctx.font = "bold 16px sans-serif";
             ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 + 80);
-            ctx.fillStyle = "#888"; ctx.font = "11px sans-serif";
-            ctx.fillText("[Toque na tela para o menu]", canvas.width / 2, canvas.height / 2 + 120);
+            ctx.fillStyle = "#666"; ctx.font = "11px sans-serif";
+            ctx.fillText("[Toque na tela para reiniciar]", canvas.width / 2, canvas.height / 2 + 120);
         }
 
         ctx.restore();
