@@ -45,21 +45,24 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // --- CARREGAMENTO DE ASSETS (SINCRONIZADO COM SEU GITHUB) ---
+    // --- CARREGAMENTO DE ASSETS ---
     const imgNave = new Image(); imgNave.src = "nave.png"; 
     const imgTiro = new Image(); imgTiro.src = "gosma_verde.png"; 
     const imgBatedor = new Image(); imgBatedor.src = "batedor_1.png"; 
+    
+    // Novo inimigo: Se você não tiver o arquivo "batedor_2.png" ainda, o jogo usará um quadrado roxo estiloso automaticamente
+    const imgBatedor2 = new Image(); imgBatedor2.src = "batedor_2.png"; 
+    
     const imgBolaMaldita = new Image(); imgBolaMaldita.src = "bola_maldita.png"; 
     const imgChefao = new Image(); imgChefao.src = "chefao.png"; 
-    const imgFundo = new Image(); imgFundo.src = "fundo.jpg"; // Caso queira colocar depois
+    const imgFundo = new Image(); imgFundo.src = "fundo.jpg"; 
 
-    // Sistema de partículas para o fundo caso não tenha a imagem "fundo.jpg"
     const estrelasFundo = [];
     for(let i = 0; i < 40; i++) {
         estrelasFundo.push({ x: Math.random() * 400, y: Math.random() * 800, tamanho: Math.random() * 2 + 1, vel: Math.random() * 2 + 1 });
     }
 
-    // Funções de Áudio Ajustadas para os seus arquivos exatos
+    // Funções de Áudio
     function tocarSomTiro() {
         try { const som = new Audio("til.mp3"); som.volume = 0.2; som.play().catch(() => {}); } catch (e) {}
     }
@@ -70,7 +73,12 @@
         try { const som = new Audio("explosao.mp3"); som.volume = 0.7; som.play().catch(() => {}); } catch (e) {}
     }
     function tocarSomSucao() {
-        try { const som = new Audio("chupa.mp3"); som.volume = 0.6; som.play().catch(() => {}); } catch (e) {} // AJUSTADO PARA SEU ARQUIVO CHUPA.MP3
+        try { 
+            const som = new Audio("chupa.mp3"); 
+            som.volume = 0.8; 
+            som.currentTime = 0; // Toca instantaneamente do início
+            som.play().catch(() => {}); 
+        } catch (e) {} 
     }
 
     // --- VARIÁVEIS DE ESTADO ---
@@ -95,7 +103,7 @@
 
     const cenario = { y1: 0, y2: 0, velocidade: 3.5 };
     const tiros = [];
-    const batedores = [];
+    const batedores = []; // Array que guardará tanto o Batedor 1 quanto o Batedor 2 (Aedes)
     const bolasMalditas = [];
     const explosoes = []; 
     const powerups = []; 
@@ -131,7 +139,6 @@
         painel.btnIniciar.x = canvas.width / 2 - painel.btnIniciar.l / 2;
         painel.btnIniciar.y = canvas.height / 2 + 60;
 
-        // Redimensionar posições das estrelas virtuais com base no canvas
         estrelasFundo.forEach(est => est.x = Math.random() * canvas.width);
 
         if (x_jogador.x === 0 || x_jogador.y === 0) {
@@ -282,7 +289,6 @@
 
     // --- MÁQUINA DE LÓGICA ---
     function atualizar(ts) {
-        // Movimentação das estrelas artificiais (caso não haja foto)
         estrelasFundo.forEach(est => {
             est.y += est.vel;
             if(est.y > canvas.height) { est.y = -10; est.x = Math.random() * canvas.width; }
@@ -321,6 +327,10 @@
             x_jogador.y += distY * 0.08;
             x_jogador.escala -= 0.02;
 
+            if (Math.random() < 0.15) { 
+                tocarSomSucao();
+            }
+
             if (x_jogador.escala <= 0.05) {
                 x_jogador.vida = 0;
                 estadoJogo = "GAMEOVER";
@@ -330,9 +340,9 @@
 
         // --- FASE 1 ---
         if (faseAtual === 1) {
-            if (abates < 15) { intervaloInimigos = 1600; } 
-            else if (abates < 35) { intervaloInimigos = 1100; cenario.velocidade = 5; } 
-            else if (abates < META_CHEFÃO) { intervaloInimigos = 750; }
+            if (abates < 15) { intervaloInimigos = 1500; } 
+            else if (abates < 35) { intervaloInimigos = 1000; cenario.velocidade = 5; } 
+            else if (abates < META_CHEFÃO) { intervaloInimigos = 700; }
 
             if (abates >= META_CHEFÃO && !bossAtivo && !bossMorrendo) {
                 bossAtivo = true;
@@ -383,26 +393,72 @@
                 }
             }
 
+            // --- SISTEMA DE SPAWN DOS INIMIGOS COM AEDES (BATEDOR 2) ---
             if (!bossAtivo && ts - ultimoInimigoCriado > intervaloInimigos) {
-                batedores.push({ x: Math.random() * (canvas.width - 45), y: -45, largura: 45, altura: 45, vel: 3.5, ultTiro: ts });
+                // A partir de 10 abates, existe 40% de chance de nascer o perigoso Batedor 2 (Aedes)
+                if (abates >= 10 && Math.random() < 0.40) {
+                    batedores.push({ 
+                        tipo: 2, // Identificador de tipo
+                        x: Math.random() * (canvas.width - 45), 
+                        y: -45, 
+                        largura: 45, 
+                        altura: 45, 
+                        velY: 4.5, // Velocidade de descida rápida
+                        ultTiro: ts,
+                        anguloGiro: Math.random() * 10, // Semente aleatória para o ziguezague
+                        larguraZiguezague: Math.random() * 4 + 3 // Amplitude do ziguezague do mosquito
+                    });
+                } else {
+                    // Inimigo comum da Fase 1 (Batedor Normal)
+                    batedores.push({ 
+                        tipo: 1, 
+                        x: Math.random() * (canvas.width - 45), 
+                        y: -45, 
+                        largura: 45, 
+                        altura: 45, 
+                        velY: 3.5, 
+                        ultTiro: ts 
+                    });
+                }
                 ultimoInimigoCriado = ts;
             }
 
+            // --- MOVIMENTAÇÃO DOS INIMIGOS ---
             for (let i = batedores.length - 1; i >= 0; i--) {
-                let b = batedores[i]; b.y += b.vel;
-                if (ts - b.ultTiro > 1200 && b.y < painel.y) {
-                    bolasMalditas.push({ x: b.x + b.largura/2 - 7, y: b.y + b.altura, largura: 14, altura: 14, vel: 5.5 });
+                let b = batedores[i]; 
+                
+                b.y += b.velY; // Todo mundo desce
+
+                // Lógica de Movimento Indefinido do Batedor 2 (Aedes)
+                if (b.tipo === 2) {
+                    b.anguloGiro += 0.12; // Velocidade de oscilação do ziguezague
+                    b.x += Math.sin(b.anguloGiro) * b.larguraZiguezague; // Aplica matemática de curva senoidal lateral
+
+                    // Trava o mosquito para não fugir totalmente da borda útil da tela
+                    if (b.x < 5) b.x = 5;
+                    if (b.x > canvas.width - b.largura - 5) b.x = canvas.width - b.largura - 5;
+                }
+
+                // Tiros dos inimigos
+                let tempoDisparo = b.tipo === 2 ? 900 : 1200; // O Aedes atira mais rápido!
+                if (ts - b.ultTiro > tempoDisparo && b.y < painel.y) {
+                    bolasMalditas.push({ x: b.x + b.largura/2 - 7, y: b.y + b.altura, largura: 14, altura: 14, vel: b.tipo === 2 ? 6.5 : 5.5 });
                     b.ultTiro = ts;
                 }
+
+                // Teste de impacto com tiros do jogador
                 for (let j = tiros.length - 1; j >= 0; j--) {
                     if (verificarColisao(tiros[j], b)) {
                         instanciarExplosao(b.x, b.y, b.largura, b.altura);
                         tentarDropPowerup(b.x, b.y);
                         batedores.splice(i, 1); tiros.splice(j, 1);
-                        abates++; pontuacao += 150;
+                        abates++; 
+                        pontuacao += b.tipo === 2 ? 250 : 150; // Aedes dá mais pontuação!
                         break;
                     }
                 }
+                
+                // Remove se passou do painel de controle
                 if (b && b.y > painel.y) batedores.splice(i, 1);
             }
 
@@ -438,7 +494,6 @@
                 if (distancia <= bn.raioBoca && !x_jogador.emSucao) {
                     x_jogador.emSucao = true;
                     x_jogador.buracoSugador = bn;
-                    tocarSomSucao(); 
                 }
                 else if (distancia <= bn.raioAtracao && !x_jogador.emSucao) {
                     if (centroNaveX < bn.x) x_jogador.x += 1.5;
@@ -478,7 +533,6 @@
 
         ctx.fillStyle = "#090912"; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Renderiza imagem se houver, se não, desenha estrelas em código
         if (imgFundo.complete && imgFundo.width > 0) {
             ctx.drawImage(imgFundo, 0, cenario.y1, canvas.width, canvas.height);
             ctx.drawImage(imgFundo, 0, cenario.y2, canvas.width, canvas.height);
@@ -523,16 +577,28 @@
         });
 
         if (faseAtual === 1) {
+            // Desenho Inteligente dos Batedores (1 e 2)
             batedores.forEach(b => {
-                if (imgBatedor.complete && imgBatedor.width > 0) ctx.drawImage(imgBatedor, b.x, b.y, b.largura, b.altura);
-                else { ctx.fillStyle = "#ff2244"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
+                if (b.tipo === 2) {
+                    // Desenha o Batedor do Aedes (Tipo 2)
+                    if (imgBatedor2.complete && imgBatedor2.width > 0) {
+                        ctx.drawImage(imgBatedor2, b.x, b.y, b.largura, b.altura);
+                    } else {
+                        // Quadrado roxo neon com borda caso a imagem ainda não tenha sido upada no GitHub
+                        ctx.fillStyle = "#bc00ff"; ctx.fillRect(b.x, b.y, b.largura, b.altura);
+                        ctx.strokeStyle = "#ff00ea"; ctx.lineWidth = 2; ctx.strokeRect(b.x, b.y, b.largura, b.altura);
+                    }
+                } else {
+                    // Desenha o Batedor de sempre (Tipo 1)
+                    if (imgBatedor.complete && imgBatedor.width > 0) ctx.drawImage(imgBatedor, b.x, b.y, b.largura, b.altura);
+                    else { ctx.fillStyle = "#ff2244"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
+                }
             });
 
             if ((bossAtivo || bossMorrendo) && estadoJogo === "JOGANDO") {
                 if (imgChefao.complete && imgChefao.width > 0) {
                     ctx.drawImage(imgChefao, chefao.x, chefao.y, chefao.largura, chefao.height);
                 } else {
-                    // Círculo marrom/laranja caso a foto do boss falhe
                     ctx.fillStyle = "#7a3311"; ctx.beginPath(); ctx.arc(chefao.x + chefao.largura/2, chefao.y + chefao.height/2, chefao.largura/2, 0, Math.PI*2); ctx.fill();
                 }
                 if (bossAtivo) {
@@ -578,7 +644,7 @@
         ctx.fillStyle = "#fff"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "left";
         ctx.fillText("SCORE: " + pontuacao, 25, 52);
         ctx.font = "11px sans-serif";
-        ctx.fillText("FASE: " + faseAtual + (faseAtual === 1 ? " (Corona)" : " (Vórtices)"), 25, 68);
+        ctx.fillText("FASE: " + faseAtual + (faseAtual === 1 ? " (Corona e Aedes)" : " (Vórtices)"), 25, 68);
 
         if (estadoJogo === "JOGANDO") {
             ctx.fillStyle = "rgba(255, 255, 255, 0.22)"; ctx.font = "24px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -595,7 +661,7 @@
             ctx.fillStyle = "rgba(5, 0, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillStyle = "#00ffcc"; ctx.font = "bold 24px sans-serif";
-            ctx.fillText("CORONAVÍRUS DETONADO!", canvas.width / 2, canvas.height / 2 - 30);
+            ctx.fillText("PANDEMIA CONTROLADA!", canvas.width / 2, canvas.height / 2 - 30);
             ctx.fillStyle = "#ffffff"; ctx.font = "bold 18px sans-serif";
             ctx.fillText("FASE 2: CAMPOS MAGNÉTICOS", canvas.width / 2, canvas.height / 2 + 20);
             ctx.fillStyle = "#8200ff"; ctx.font = "13px sans-serif";
