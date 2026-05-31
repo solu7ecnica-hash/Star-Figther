@@ -49,7 +49,7 @@
     const imgNave = new Image(); imgNave.src = "nave.png"; 
     const imgTiro = new Image(); imgTiro.src = "gosma_verde.png"; 
     const imgBatedor = new Image(); imgBatedor.src = "batedor_1.png"; 
-    const imgBatedor2 = new Image(); imgBatedor2.src = "batedor_2.png"; // CORRIGIDO: Vinculado corretamente à Fase 2
+    const imgBatedor2 = new Image(); imgBatedor2.src = "batedor_2.png"; 
     const imgBolaMaldita = new Image(); imgBolaMaldita.src = "bola_maldita.png"; 
     const imgChefao = new Image(); imgChefao.src = "chefao.png"; 
     const imgFundo = new Image(); imgFundo.src = "fundo.jpg"; 
@@ -70,7 +70,6 @@
         try { const som = new Audio("explosao.mp3"); som.volume = 0.7; som.play().catch(() => {}); } catch (e) {}
     }
     
-    // Áudio global fixo para gerenciar o término do efeito de sucção
     let audioSucao = null;
 
     function tocarSomSucao() {
@@ -116,7 +115,7 @@
     let intervaloInimigos = 1600; 
 
     const chefao = {
-        x: 0, y: -120, largura: 130, height: 100, velX: 3.5, velY: 1.5,
+        x: 0, y: -120, largura: 130, altura: 100, velX: 3.5, velY: 1.5,
         vidaMax: 30, vida: 30, ultTiro: 0
     };
 
@@ -282,18 +281,18 @@
 
     function atirar() {
         if (estadoJogo !== "JOGANDO" || x_jogador.emSucao) return;
+        // CORRIGIDO: Modificado de 'height' para 'altura' para alinhar com a função verificarColisao
         if (x_jogador.tipoTiro === "DUPLO") {
-            tiros.push({ x: x_jogador.x + 5, y: x_jogador.y - 25, largura: 10, height: 25, vel: 13 });
-            tiros.push({ x: x_jogador.x + x_jogador.largura - 15, y: x_jogador.y - 25, largura: 10, height: 25, vel: 13 });
+            tiros.push({ x: x_jogador.x + 5, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 13 });
+            tiros.push({ x: x_jogador.x + x_jogador.largura - 15, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 13 });
         } else {
-            tiros.push({ x: x_jogador.x + x_jogador.largura/2 - 5, y: x_jogador.y - 25, largura: 10, height: 25, vel: 12 });
+            tiros.push({ x: x_jogador.x + x_jogador.largura/2 - 5, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 12 });
         }
         tocarSomTiro();
     }
 
     // --- MÁQUINA DE LÓGICA ---
     function atualizar(ts) {
-        // ANIMAÇÃO DE ESTRELAS E CENÁRIO SÓ MOVE SE NÃO ESTIVER SUGANDO A NAVE
         if (!x_jogador.emSucao) {
             estrelasFundo.forEach(est => {
                 est.y += est.vel;
@@ -317,7 +316,6 @@
         if (estadoJogo !== "JOGANDO") { tremorCena = 0; return; }
         if (tremorCena > 0) tremorCena -= 0.5;
 
-        // CORREÇÃO CRÍTICA DO BURACO NEGRO: CONGELA O MUNDO E DECAI EM 4 SEGUNDOS SINCRONIZADO
         if (x_jogador.emSucao) {
             let bn = x_jogador.buracoSugador;
             let centroNaveX = x_jogador.x + x_jogador.largura / 2;
@@ -326,23 +324,19 @@
             let distX = bn.x - centroNaveX;
             let distY = bn.y - centroNaveY;
 
-            // Puxa a nave fisicamente em direção ao centro exato
             x_jogador.x += distX * 0.05;
             x_jogador.y += distY * 0.05;
             
-            // Reduz a escala suavemente simulando a distorção (Dura aproximadamente 4 segundos com requestAnimationFrame)
             x_jogador.escala -= 0.0045; 
-            x_jogador.anguloMorte += 0.15; // Faz a nave rodopiar ao entrar no ralo espacial
+            x_jogador.anguloMorte += 0.15;
 
-            // Condição de saída: Quando sumir por completo, encerra
             if (x_jogador.escala <= 0.01) {
                 x_jogador.vida = 0;
                 estadoJogo = "GAMEOVER";
             }
-            return; // TRAVA O RESTANTE DA ATUALIZAÇÃO (Nenhum batedor ou tiro se move!)
+            return; 
         }
 
-        // Se o jogo está correndo normal, atualiza a movimentação por comandos
         if (x_jogador.movendoEsquerda && x_jogador.x > 0) x_jogador.x -= x_jogador.velocidad;
         if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidad;
         if (x_jogador.movendoCima && x_jogador.y > 0) x_jogador.y -= x_jogador.velocidad;
@@ -351,7 +345,7 @@
         // Mover tiros do jogador
         for (let i = tiros.length - 1; i >= 0; i--) {
             tiros[i].y -= tiros[i].vel;
-            if (faseAtual === 1 && bossAtivo && verificarColisao(tiros[i], {x: chefao.x, y: chefao.y, largura: chefao.largura, altura: chefao.height}) && chefao.y > 0) {
+            if (faseAtual === 1 && bossAtivo && verificarColisao(tiros[i], {x: chefao.x, y: chefao.y, largura: chefao.largura, altura: chefao.altura}) && chefao.y > 0) {
                 instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20);
                 tiros.splice(i, 1);
                 chefao.vida--;
@@ -375,7 +369,6 @@
                 ultimoInimigoCriado = ts;
             } 
             else if (faseAtual === 2) {
-                // CORRIGIDO: Ativa o tipo 2 para carregar o arquivo imgBatedor2
                 batedores.push({ 
                     tipo: 2, 
                     x: Math.random() * (canvas.width - 50), 
@@ -409,11 +402,13 @@
                 b.ultTiro = ts;
             }
 
+            // CORRIGIDO E REVISADO: Processamento estável de colisão contra os batedores
             for (let j = tiros.length - 1; j >= 0; j--) {
                 if (verificarColisao(tiros[j], b)) {
                     instanciarExplosao(b.x, b.y, b.largura, b.altura);
                     tentarDropPowerup(b.x, b.y);
-                    batedores.splice(i, 1); tiros.splice(j, 1);
+                    batedores.splice(i, 1); 
+                    tiros.splice(j, 1);
                     abates++; 
                     pontuacao += b.tipo === 2 ? 300 : 150;
 
@@ -448,8 +443,8 @@
                     if (chefao.x <= 10 || chefao.x >= canvas.width - chefao.largura - 10) chefao.velX *= -1;
                 }
                 if (ts - chefao.ultTiro > 850 && chefao.y > 0) {
-                    bolasMalditas.push({ x: chefao.x + 20, y: chefao.y + chefao.height, largura: 16, altura: 16, vel: 6.5 });
-                    bolasMalditas.push({ x: chefao.x + chefao.largura - 36, y: chefao.y + chefao.height, largura: 16, altura: 16, vel: 6.5 });
+                    bolasMalditas.push({ x: chefao.x + 20, y: chefao.y + chefao.altura, largura: 16, altura: 16, vel: 6.5 });
+                    bolasMalditas.push({ x: chefao.x + chefao.largura - 36, y: chefao.y + chefao.altura, largura: 16, altura: 16, vel: 6.5 });
                     chefao.ultTiro = ts;
                 }
             }
@@ -468,7 +463,7 @@
             if (bm.y > painel.y) bolasMalditas.splice(i, 1);
         }
 
-        // LÓGICA DE ATRAÇÃO E MÁXIMO CONTATO DOS BURACOS NEGROS
+        // Lógica Buracos Negros
         if (faseAtual === 2) {
             let todosPassaram = true;
 
@@ -482,14 +477,12 @@
                 let centroNaveY = x_jogador.y + x_jogador.altura / 2;
                 let distancia = Math.sqrt(Math.pow(bn.x - centroNaveX, 2) + Math.pow(bn.y - centroNaveY, 2));
 
-                // GATILHO DA SUA SUGESTÃO: Dispara o áudio imediatamente no toque da borda interna
                 if (distancia <= bn.raioBoca && !x_jogador.emSucao) {
                     x_jogador.emSucao = true;
                     x_jogador.buracoSugador = bn;
-                    tocarSomSucao(); // Som roda na hora sem atraso
+                    tocarSomSucao(); 
                 }
                 else if (distancia <= bn.raioAtracao && !x_jogador.emSucao) {
-                    // Puxão gravitacional magnético suave de aproximação
                     if (centroNaveX < bn.x) x_jogador.x += 1.4;
                     else x_jogador.x -= 1.4;
                     if (centroNaveY < bn.y) x_jogador.y += 1.4;
@@ -566,11 +559,11 @@
         });
 
         tiros.forEach(t => {
-            if (imgTiro.complete && imgTiro.width > 0) ctx.drawImage(imgTiro, t.x, t.y, t.largura, 25);
-            else { ctx.fillStyle = "#00ffcc"; ctx.fillRect(t.x, t.y, t.largura, 25); }
+            if (imgTiro.complete && imgTiro.width > 0) ctx.drawImage(imgTiro, t.x, t.y, t.largura, t.altura);
+            else { ctx.fillStyle = "#00ffcc"; ctx.fillRect(t.x, t.y, t.largura, t.altura); }
         });
 
-        // DESENHAR INIMIGOS - CORRIGIDO PARA LER O ARQUIVO DE MOSQUITO EM TIPO 2
+        // Desenhar Inimigos
         batedores.forEach(b => {
             if (b.tipo === 2) {
                 if (imgBatedor2.complete && imgBatedor2.width > 0) {
@@ -585,8 +578,8 @@
         });
 
         if (faseAtual === 1 && (bossAtivo || bossMorrendo)) {
-            if (imgChefao.complete && imgChefao.width > 0) ctx.drawImage(imgChefao, chefao.x, chefao.y, chefao.largura, chefao.height);
-            else { ctx.fillStyle = "#7a3311"; ctx.fillRect(chefao.x, chefao.y, chefao.largura, chefao.height); }
+            if (imgChefao.complete && imgChefao.width > 0) ctx.drawImage(imgChefao, chefao.x, chefao.y, chefao.largura, chefao.altura);
+            else { ctx.fillStyle = "#7a3311"; ctx.fillRect(chefao.x, chefao.y, chefao.largura, chefao.altura); }
             if (bossAtivo) {
                 ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(canvas.width/2 - 100, 15, 200, 8);
                 ctx.fillStyle = "#ff0044"; ctx.fillRect(canvas.width/2 - 100, 15, (chefao.vida / chefao.vidaMax) * 200, 8);
@@ -598,21 +591,19 @@
             else { ctx.fillStyle = "#ffcc00"; ctx.beginPath(); ctx.arc(bm.x+7, bm.y+7, 7, 0, Math.PI*2); ctx.fill(); }
         });
 
-        // DESENHAR JOGADOR (NAVE ASH) COM SUPORTE A ROTAÇÃO DE ENCOLHIMENTO SINCRONIZADA
         if (estadoJogo === "JOGANDO" || x_jogador.emSucao) {
             ctx.save();
             let cX = x_jogador.x + x_jogador.largura / 2;
             let cY = x_jogador.y + x_jogador.altura / 2;
             ctx.translate(cX, cY);
             ctx.scale(x_jogador.escala, x_jogador.escala); 
-            ctx.rotate(x_jogador.anguloMorte); // Fará o efeito espiral sincronizado de 4 segundos
+            ctx.rotate(x_jogador.anguloMorte); 
             
             if (imgNave.complete && imgNave.width > 0) ctx.drawImage(imgNave, -x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura);
             else { ctx.fillStyle = "#00d2ff"; ctx.fillRect(-x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura); }
             ctx.restore();
         }
 
-        // Efeito de explosões
         explosoes.forEach(ex => {
             ctx.fillStyle = "rgba(255, 90, 0, " + (ex.vida / ex.vidaMax) + ")";
             ctx.beginPath(); ctx.arc(ex.x + ex.largura/2, ex.y + ex.altura/2, ex.largura * 1.5, 0, Math.PI*2); ctx.fill();
@@ -631,7 +622,7 @@
         ctx.font = "11px sans-serif";
         ctx.fillText("FASE " + faseAtual + (faseAtual === 1 ? ": Combate Viral" : ": Zona Magnética"), 25, 68);
 
-        // Controles Touch na Tela
+        // Controles Touch
         if (estadoJogo === "JOGANDO") {
             ctx.fillStyle = "rgba(255, 255, 255, 0.22)"; ctx.font = "24px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText("▲", painel.btnCima.x + 25, painel.btnCima.y + 25);
@@ -643,7 +634,7 @@
             ctx.strokeStyle = "rgba(255, 0, 70, 0.9)"; ctx.lineWidth = 2; ctx.stroke();
         }
 
-        // Telas de Menu/Fim
+        // Telas de Fim/Menus
         if (estadoJogo === "TRANSICAO") {
             ctx.fillStyle = "rgba(5, 0, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -676,7 +667,7 @@
             ctx.fillStyle = "#ffffff"; ctx.font = "16px sans-serif";
             ctx.fillText("Placar: " + pontuacao, canvas.width / 2, canvas.height / 2 + 15);
             ctx.fillStyle = "#666"; ctx.font = "12px sans-serif";
-            ctx.fillText("[Toque para reiniciar]", canvas.width / 2, canvas.height / 2 + 80);
+            ctx.fillText("[Toque ou pressione Enter para reiniciar]", canvas.width / 2, canvas.height / 2 + 80);
         }
 
         if (estadoJogo === "VITORIA") {
