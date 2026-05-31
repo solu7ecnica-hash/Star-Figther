@@ -281,7 +281,6 @@
 
     function atirar() {
         if (estadoJogo !== "JOGANDO" || x_jogador.emSucao) return;
-        // CORRIGIDO: Modificado de 'height' para 'altura' para alinhar com a função verificarColisao
         if (x_jogador.tipoTiro === "DUPLO") {
             tiros.push({ x: x_jogador.x + 5, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 13 });
             tiros.push({ x: x_jogador.x + x_jogador.largura - 15, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 13 });
@@ -376,7 +375,7 @@
                     largura: 50, 
                     altura: 50, 
                     velY: 4.0, 
-                    ultTiro: ts,
+                    ultTiro: ts, // Inicializado de forma limpa
                     anguloGiro: Math.random() * 5,
                     larguraZiguezague: 5
                 });
@@ -396,13 +395,19 @@
                 if (b.x > canvas.width - b.largura - 5) b.x = canvas.width - b.largura - 5;
             }
 
-            let recarga = b.tipo === 2 ? 900 : 1300;
-            if (ts - b.ultTiro > recarga && b.y < painel.y) {
-                bolasMalditas.push({ x: b.x + b.largura/2 - 7, y: b.y + b.altura, largura: 14, altura: 14, vel: b.tipo === 2 ? 6.5 : 5.0 });
-                b.ultTiro = ts;
+            // CORREÇÃO CRÍTICA DO TIRO: Estrutura de tempo robusta e recalculada para o Batedor 2
+            let recarga = b.tipo === 2 ? 1000 : 1400; 
+            if (ts - b.ultTiro > recarga && b.y < painel.y - 50 && b.y > 20) {
+                bolasMalditas.push({ 
+                    x: b.x + b.largura/2 - 7, 
+                    y: b.y + b.altura, 
+                    largura: 14, 
+                    altura: 14, 
+                    vel: b.tipo === 2 ? 6.5 : 5.0 
+                });
+                b.ultTiro = ts; // Sincroniza o relógio interno do inimigo com precisão
             }
 
-            // CORRIGIDO E REVISADO: Processamento estável de colisão contra os batedores
             for (let j = tiros.length - 1; j >= 0; j--) {
                 if (verificarColisao(tiros[j], b)) {
                     instanciarExplosao(b.x, b.y, b.largura, b.altura);
@@ -499,7 +504,7 @@
         for (let i = powerups.length - 1; i >= 0; i--) {
             powerups[i].y += powerups[i].vel;
             if (verificarColisao(powerups[i], x_jogador)) {
-                if (powerups[i].tipo === "TIRO_DUPLO") x_jogador.tipoTiro = "DUPLO";
+                if (powerups[i].tipo === "TIRO_DUPLO" ? x_jogador.tipoTiro = "DUPLO" : "");
                 if (powerups[i].tipo === "VIDA") x_jogador.vida = Math.min(x_jogador.vidaMax, x_jogador.vida + 3);
                 powerups.splice(i, 1); continue;
             }
@@ -529,7 +534,6 @@
             estrelasFundo.forEach(est => { ctx.fillRect(est.x, est.y, est.tamanho, est.tamanho); });
         }
 
-        // Desenhar Buracos Negros (Fase 2)
         if (faseAtual === 2) {
             buracosNegros.forEach(bn => {
                 ctx.save();
@@ -563,7 +567,6 @@
             else { ctx.fillStyle = "#00ffcc"; ctx.fillRect(t.x, t.y, t.largura, t.altura); }
         });
 
-        // Desenhar Inimigos
         batedores.forEach(b => {
             if (b.tipo === 2) {
                 if (imgBatedor2.complete && imgBatedor2.width > 0) {
