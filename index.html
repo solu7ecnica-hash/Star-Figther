@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Star Fighter - Ferratech Jogos Campanha Social</title>
+    
+    <!-- 📡 ANTENA INTEGRADA DO GOOGLE ANALYTICS -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WHGRWM2R8F"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-WHGRWM2R8F');
+    </script>
+
     <style>
         .bg-photo-overlay, .bg-photo-container, .centered-top-placeholder, 
         .centered-top-container, header, .skip-navigation, .sidebar-container {
@@ -53,10 +63,13 @@
     const imgBolaMaldita = new Image(); imgBolaMaldita.src = "bola_maldita.png"; 
     const imgChefao = new Image(); imgChefao.src = "chefao.png"; 
     const imgFundo = new Image(); imgFundo.src = "fundo.jpg"; 
-    
-    // Novas imagens preparadas para a Fase 3
     const imgDengosao = new Image(); imgDengosao.src = "dengosao.png";
     const imgFerrao = new Image(); imgFerrao.src = "ferrao.png";
+
+    // Assets da Nova Fase 4 (Asteroides)
+    const imgAsteroide1 = new Image(); imgAsteroide1.src = "asteroide_1.png";
+    const imgAsteroide2 = new Image(); imgAsteroide2.src = "asteroide_2.png";
+    const imgAsteroide3 = new Image(); imgAsteroide3.src = "asteroide_3.png";
 
     const estrelasFundo = [];
     for(let i = 0; i < 40; i++) {
@@ -75,16 +88,30 @@
     }
     
     let audioSucao = null;
-
     function tocarSomSucao() {
         try { 
-            if (!audioSucao) {
-                audioSucao = new Audio("chupa.mp3");
-                audioSucao.volume = 0.9;
-            }
-            audioSucao.currentTime = 0; 
-            audioSucao.play().catch(() => {}); 
+            if (!audioSucao) { audioSucao = new Audio("chupa.mp3"); audioSucao.volume = 0.9; }
+            audioSucao.currentTime = 0; audioSucao.play().catch(() => {}); 
         } catch (e) {} 
+    }
+
+    // ==========================================
+    // 📊 LÓGICA DO CONTADOR DE PARTIDAS
+    // ==========================================
+    let totalPartidasGerais = parseInt(localStorage.getItem("ferratech_partidas_locais")) || 142;
+
+    function registrarNovaPartida() {
+        totalPartidasGerais++;
+        localStorage.setItem("ferratech_partidas_locais", totalPartidasGerais);
+        
+        // Dispara o evento em tempo real para o seu painel do Google Analytics
+        if (typeof gtag === 'function') {
+            gtag('event', 'partida_iniciada', {
+                'event_category': 'Engajamento',
+                'event_label': 'Star Fighter Partidas',
+                'value': totalPartidasGerais
+            });
+        }
     }
 
     // --- VARIÁVEIS DE ESTADO ---
@@ -92,7 +119,7 @@
     let faseAtual = 1; 
     let pontuacao = 0;
     let abates = 0;
-    const META_CHEFÃO = 50; // MODIFICADO: Agora precisa matar 50 pragas na fase 1!
+    const META_CHEFÃO = 50; 
     let bossAtivo = false;
     let bossMorrendo = false;
     let tempoMorteBoss = 0;
@@ -107,14 +134,20 @@
         escala: 1, emSucao: false, buracoSugador: null, anguloMorte: 0
     };
 
-    const cenario = { y1: 0, y2: 0, velocidade: 3.5 };
+    const cenario = { y1: 0, y2: 0, velocidad: 3.5 };
     const tiros = [];
     const batedores = []; 
     const bolasMalditas = [];
-    const ferroesInimigos = []; // Array para os novos projéteis do Dengosão
+    const ferroesInimigos = []; 
     const explosoes = []; 
     const powerups = []; 
     const buracosNegros = []; 
+
+    // Lista de Gerenciamento da Fase 4
+    const asteroides = [];
+    let ultimoAsteroideCriado = 0;
+    const META_FIM_ASTEROIDES = 25; // Número de asteroides destruídos/passados para fechar o jogo
+    let countAsteroidesProcessados = 0;
 
     let ultimoInimigoCriado = 0;
     let intervaloInimigos = 1400; 
@@ -125,7 +158,7 @@
         vidaMax: 30, vida: 30, ultTiro: 0
     };
 
-    // NOVO: Estrutura para o Chefão Dengosão (Fase 3)
+    // Chefão Dengosão (Fase 3)
     const dengosao = {
         x: 0, y: -150, largura: 160, altura: 120, velX: 4.5, velY: 1.2,
         vidaMax: 60, vida: 60, ultTiroBola: 0, ultTiroFerrao: 0, ativo: false, morrendo: false, tempoMorte: 0
@@ -174,13 +207,15 @@
     }
 
     function reiniciarJogo() {
-        pontuacao = 0; abates = 0; faseAtual = 1;
+        registrarNovaPartida(); // Soma placar e avisa o Analytics!
+
+        pontuacao = 0; abates = 0; faseAtual = 1; countAsteroidesProcessados = 0;
         bossAtivo = false; bossMorrendo = false; tremorCena = 0;
         dengosao.ativo = false; dengosao.morrendo = false; dengosao.vida = dengosao.vidaMax; dengosao.y = -150;
         x_jogador.vida = x_jogador.vidaMax; x_jogador.tipoTiro = "NORMAL";
         x_jogador.escala = 1; x_jogador.emSucao = false; x_jogador.buracoSugador = null; x_jogador.anguloMorte = 0;
         tiros.length = 0; batedores.length = 0; bolasMalditas.length = 0; ferroesInimigos.length = 0;
-        explosoes.length = 0; powerups.length = 0; buracosNegros.length = 0;
+        explosoes.length = 0; powerups.length = 0; buracosNegros.length = 0; asteroides.length = 0;
         chefao.vida = chefao.vidaMax; chefao.y = -120;
         cenario.velocidade = 3.5;
         x_jogador.x = canvas.width / 2 - x_jogador.largura / 2;
@@ -190,38 +225,28 @@
     }
 
     function iniciarFase2() {
-        faseAtual = 2;
-        estadoJogo = "JOGANDO";
-        cenario.velocidade = 5.5; 
-        tiros.length = 0;
-        batedores.length = 0;
-        bolasMalditas.length = 0;
-        ferroesInimigos.length = 0;
+        faseAtual = 2; estadoJogo = "JOGANDO"; cenario.velocidade = 5.5; 
+        tiros.length = 0; batedores.length = 0; bolasMalditas.length = 0; ferroesInimigos.length = 0;
         
-        // MODIFICADO: Buracos negros bem mais distanciados verticalmente (multiplicado por 650px de espaçamento)
         buracosNegros.length = 0;
         for (let i = 0; i < 6; i++) {
             buracosNegros.push({
                 x: Math.random() * (canvas.width - 90) + 45,
-                y: -200 - (i * 650), 
-                raioBoca: 25,       
-                raioAtracao: 95,    
-                velocidadeCair: 2.5
+                y: -200 - (i * 650), raioBoca: 25, raioAtracao: 95, velocidadeCair: 2.5
             });
         }
     }
 
     function iniciarFase3() {
-        faseAtual = 3;
-        estadoJogo = "JOGANDO";
-        cenario.velocidade = 4.0;
-        tiros.length = 0;
-        batedores.length = 0;
-        bolasMalditas.length = 0;
-        ferroesInimigos.length = 0;
-        dengosao.ativo = true;
-        dengosao.x = canvas.width / 2 - dengosao.largura / 2;
-        dengosao.y = -150;
+        faseAtual = 3; estadoJogo = "JOGANDO"; cenario.velocidade = 4.0;
+        tiros.length = 0; batedores.length = 0; bolasMalditas.length = 0; ferroesInimigos.length = 0;
+        dengosao.ativo = true; dengosao.x = canvas.width / 2 - dengosao.largura / 2; dengosao.y = -150;
+    }
+
+    function iniciarFase4() {
+        faseAtual = 4; estadoJogo = "JOGANDO"; cenario.velocidade = 5.0;
+        tiros.length = 0; batedores.length = 0; bolasMalditas.length = 0; ferroesInimigos.length = 0;
+        asteroides.length = 0; countAsteroidesProcessados = 0; ultimoAsteroideCriado = performance.now();
     }
 
     function verificarColisao(a, b) {
@@ -269,9 +294,7 @@
 
         const rect = canvas.getBoundingClientRect();
         for (let i = 0; i < e.touches.length; i++) {
-            const t = e.touches[i];
-            const tx = t.clientX - rect.left;
-            const ty = t.clientY - rect.top;
+            const t = e.touches[i]; const tx = t.clientX - rect.left; const ty = t.clientY - rect.top;
 
             if (tx >= painel.btnEsq.x && tx <= painel.btnEsq.x + painel.btnEsq.l && ty >= painel.btnEsq.y && ty <= painel.btnEsq.y + painel.btnEsq.a) x_jogador.movendoEsquerda = true;
             if (tx >= painel.btnDir.x && tx <= painel.btnDir.x + painel.btnDir.l && ty >= painel.btnDir.y && ty <= painel.btnDir.y + painel.btnDir.a) x_jogador.movendoDireita = true;
@@ -281,10 +304,8 @@
     }
 
     canvas.addEventListener("touchstart", e => {
-        const rect = canvas.getBoundingClientRect();
-        const t = e.changedTouches[0];
-        const tx = t.clientX - rect.left;
-        const ty = t.clientY - rect.top;
+        const rect = canvas.getBoundingClientRect(); const t = e.changedTouches[0];
+        const tx = t.clientX - rect.left; const ty = t.clientY - rect.top;
 
         if (estadoJogo === "START") {
             if (tx >= painel.btnIniciar.x && tx <= painel.btnIniciar.x + painel.btnIniciar.l && ty >= painel.btnIniciar.y && ty <= painel.btnIniciar.y + painel.btnIniciar.a) {
@@ -292,10 +313,7 @@
             }
             return;
         }
-        if (estadoJogo === "GAMEOVER" || estadoJogo === "VITORIA") {
-            estadoJogo = "START";
-            return;
-        }
+        if (estadoJogo === "GAMEOVER" || estadoJogo === "VITORIA") { estadoJogo = "START"; return; }
 
         if (x_jogador.emSucao) return;
         let d = Math.sqrt(Math.pow(tx - painel.btnAtirar.x, 2) + Math.pow(ty - painel.btnAtirar.y, 2));
@@ -335,11 +353,9 @@
 
         // Gerenciamento de transições de fase
         if (estadoJogo === "TRANSICAO") {
-            if (faseAtual === 1 && ts - tempoTransicao > 3500) {
-                iniciarFase2();
-            } else if (faseAtual === 2 && ts - tempoTransicao > 3500) {
-                iniciarFase3();
-            }
+            if (faseAtual === 1 && ts - tempoTransicao > 3500) { iniciarFase2(); } 
+            else if (faseAtual === 2 && ts - tempoTransicao > 3500) { iniciarFase3(); }
+            else if (faseAtual === 3 && ts - tempoTransicao > 3500) { iniciarFase4(); }
             return;
         }
 
@@ -350,20 +366,12 @@
             let bn = x_jogador.buracoSugador;
             let centroNaveX = x_jogador.x + x_jogador.largura / 2;
             let centroNaveY = x_jogador.y + x_jogador.altura / 2;
+            let distX = bn.x - centroNaveX; let distY = bn.y - centroNaveY;
 
-            let distX = bn.x - centroNaveX;
-            let distY = bn.y - centroNaveY;
+            x_jogador.x += distX * 0.05; x_jogador.y += distY * 0.05;
+            x_jogador.escala -= 0.0045; x_jogador.anguloMorte += 0.15;
 
-            x_jogador.x += distX * 0.05;
-            x_jogador.y += distY * 0.05;
-            
-            x_jogador.escala -= 0.0045; 
-            x_jogador.anguloMorte += 0.15;
-
-            if (x_jogador.escala <= 0.01) {
-                x_jogador.vida = 0;
-                estadoJogo = "GAMEOVER";
-            }
+            if (x_jogador.escala <= 0.01) { x_jogador.vida = 0; estadoJogo = "GAMEOVER"; }
             return; 
         }
 
@@ -378,101 +386,118 @@
             
             // Dano no Boss da Fase 1
             if (faseAtual === 1 && bossAtivo && verificarColisao(tiros[i], {x: chefao.x, y: chefao.y, largura: chefao.largura, altura: chefao.altura}) && chefao.y > 0) {
-                instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20);
-                tiros.splice(i, 1);
-                chefao.vida--;
-                pontuacao += 50;
+                instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20); tiros.splice(i, 1); chefao.vida--; pontuacao += 50;
                 if (chefao.vida <= 0) {
-                    bossAtivo = false;
-                    bossMorrendo = true;
-                    tempoMorteBoss = ts;
-                    pontuacao += 5000;
-                    tocarSomExplosaoBoss(); 
+                    bossAtivo = false; bossMorrendo = true; tempoMorteBoss = ts; pontuacao += 5000; tocarSomExplosaoBoss(); 
                 }
                 continue;
             }
             
-            // NOVO: Dano no Dengosão (Fase 3)
+            // Dano no Dengosão (Fase 3)
             if (faseAtual === 3 && dengosao.ativo && !dengosao.morrendo && verificarColisao(tiros[i], {x: dengosao.x, y: dengosao.y, largura: dengosao.largura, altura: dengosao.altura}) && dengosao.y > 0) {
-                instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20);
-                tiros.splice(i, 1);
-                dengosao.vida--;
-                pontuacao += 70;
+                instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20); tiros.splice(i, 1); dengosao.vida--; pontuacao += 70;
                 if (dengosao.vida <= 0) {
-                    dengosao.ativo = false;
-                    dengosao.morrendo = true;
-                    dengosao.tempoMorte = ts;
-                    pontuacao += 10000;
-                    tocarSomExplosaoBoss();
+                    dengosao.ativo = false; dengosao.morrendo = true; dengosao.tempoMorte = ts; pontuacao += 10000; tocarSomExplosaoBoss();
                 }
                 continue;
+            }
+
+            // NOVO: Dano estruturado nos Asteroides (Fase 4)
+            if (faseAtual === 4) {
+                let tiroDestruido = false;
+                for (let aIdx = asteroides.length - 1; aIdx >= 0; aIdx--) {
+                    let ast = asteroides[aIdx];
+                    if (verificarColisao(tiros[i], ast)) {
+                        instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20);
+                        tiros.splice(i, 1);
+                        tiroDestruido = true;
+                        
+                        ast.vida--;
+                        if (ast.vida <= 0) {
+                            instanciarExplosao(ast.x, ast.y, ast.largura, ast.altura);
+                            tentarDropPowerup(ast.x, ast.y);
+                            asteroides.splice(aIdx, 1);
+                            countAsteroidesProcessados++;
+                            
+                            if (ast.tipo === "asteroide_1") pontuacao += 200;
+                            else if (ast.tipo === "asteroide_2") pontuacao += 600;
+                            else if (ast.tipo === "asteroide_3") pontuacao += 1500;
+                        }
+                        break;
+                    }
+                }
+                if (tiroDestruido) continue;
             }
 
             if (tiros[i] && tiros[i].y + 25 < 0) tiros.splice(i, 1);
         }
 
-        // Criar Inimigos Normais por Fase
-        // MODIFICADO: No intervalo de tempo da fase 2, aumentamos consideravelmente o nascimento de novos mosquitos
+        // Criar Inimigos Normais (Fases 1 e 2)
         let delayCriacao = (faseAtual === 2) ? 450 : intervaloInimigos; 
 
-        if (ts - ultimoInimigoCriado > delayCriacao) {
+        if (ts - ultimoInimigoCriado > delayCriacao && faseAtual <= 2) {
             if (faseAtual === 1 && !bossAtivo && !bossMorrendo) {
                 batedores.push({ tipo: 1, x: Math.random() * (canvas.width - 45), y: -45, largura: 45, altura: 45, velY: 3.5, ultTiro: ts });
                 ultimoInimigoCriado = ts;
             } 
             else if (faseAtual === 2) {
-                // Liberando hordas maiores de Mosquitos Batedor 2!
                 batedores.push({ 
-                    tipo: 2, 
-                    x: Math.random() * (canvas.width - 50), 
-                    y: -50, 
-                    largura: 50, 
-                    altura: 50, 
-                    velY: 4.2, 
-                    ultTiro: ts,
-                    anguloGiro: Math.random() * 5,
-                    larguraZiguezague: 6
+                    tipo: 2, x: Math.random() * (canvas.width - 50), y: -50, largura: 50, altura: 50, velY: 4.2, 
+                    ultTiro: ts, anguloGiro: Math.random() * 5, larguraZiguezague: 6
                 });
                 ultimoInimigoCriado = ts;
             }
         }
 
+        // NOVO: Gerador Inteligente de Asteroides para a Fase 4
+        if (faseAtual === 4 && ts - ultimoAsteroideCriado > 1100 && countAsteroidesProcessados < META_FIM_ASTEROIDES) {
+            let dadosSorteio = Math.random();
+            let nomeTipo = "asteroide_1";
+            let tam = 40; let rVida = 1; let velQueda = 4.5;
+
+            if (dadosSorteio >= 0.5 && dadosSorteio < 0.85) {
+                nomeTipo = "asteroide_2"; tam = 70; rVida = 5; velQueda = 3.5;
+            } else if (dadosSorteio >= 0.85) {
+                nomeTipo = "asteroide_3"; tam = 115; rVida = 10; velQueda = 2.5;
+            }
+
+            asteroides.push({
+                tipo: nomeTipo,
+                x: Math.random() * (canvas.width - tam - 20) + 10,
+                y: -tam - 10,
+                largura: tam,
+                altura: tam,
+                vida: rVida,
+                velY: velQueda,
+                angulo: Math.random() * Math.PI,
+                velRotacao: (Math.random() - 0.5) * 0.06
+            });
+            ultimoAsteroideCriado = ts;
+        }
+
         // Atualizar batedores
         for (let i = batedores.length - 1; i >= 0; i--) {
-            let b = batedores[i]; 
-            b.y += b.velY;
+            let b = batedores[i]; b.y += b.velY;
 
             if (b.tipo === 2) {
-                b.anguloGiro += 0.12;
-                b.x += Math.sin(b.anguloGiro) * b.larguraZiguezague;
-                if (b.x < 5) b.x = 5;
-                if (b.x > canvas.width - b.largura - 5) b.x = canvas.width - b.largura - 5;
+                b.anguloGiro += 0.12; b.x += Math.sin(b.anguloGiro) * b.larguraZiguezague;
+                if (b.x < 5) b.x = 5; if (b.x > canvas.width - b.largura - 5) b.x = canvas.width - b.largura - 5;
             }
 
             let recarga = b.tipo === 2 ? 1000 : 1400; 
             if (ts - b.ultTiro > recarga && b.y < painel.y - 50 && b.y > 20) {
-                bolasMalditas.push({ 
-                    x: b.x + b.largura/2 - 7, 
-                    y: b.y + b.altura, 
-                    largura: 14, 
-                    altura: 14, 
-                    vel: b.tipo === 2 ? 6.5 : 5.0 
-                });
+                bolasMalditas.push({ x: b.x + b.largura/2 - 7, y: b.y + b.altura, largura: 14, altura: 14, vel: b.tipo === 2 ? 6.5 : 5.0 });
                 b.ultTiro = ts; 
             }
 
             for (let j = tiros.length - 1; j >= 0; j--) {
                 if (verificarColisao(tiros[j], b)) {
-                    instanciarExplosao(b.x, b.y, b.largura, b.altura);
-                    tentarDropPowerup(b.x, b.y);
-                    batedores.splice(i, 1); 
-                    tiros.splice(j, 1);
-                    abates++; 
+                    instanciarExplosao(b.x, b.y, b.largura, b.altura); tentarDropPowerup(b.x, b.y);
+                    batedores.splice(i, 1); tiros.splice(j, 1); abates++; 
                     pontuacao += b.tipo === 2 ? 300 : 150;
 
                     if (faseAtual === 1 && abates >= META_CHEFÃO && !bossAtivo && !bossMorrendo) {
-                        bossAtivo = true;
-                        chefao.x = canvas.width / 2 - chefao.largura / 2;
+                        bossAtivo = true; chefao.x = canvas.width / 2 - chefao.largura / 2;
                     }
                     break;
                 }
@@ -483,23 +508,13 @@
         // Ataques Chefão (Fase 1)
         if (faseAtual === 1) {
             if (bossMorrendo) {
-                if (Math.random() < 0.25) {
-                    instanciarExplosao(chefao.x + Math.random()*chefao.largura, chefao.y + Math.random()*100, 30, 30);
-                }
-                if (ts - tempoMorteBoss > 3000) { 
-                    bossMorrendo = false;
-                    estadoJogo = "TRANSICAO";
-                    tempoTransicao = ts;
-                }
+                if (Math.random() < 0.25) { instanciarExplosao(chefao.x + Math.random()*chefao.largura, chefao.y + Math.random()*100, 30, 30); }
+                if (ts - tempoMorteBoss > 3000) { bossMorrendo = false; estadoJogo = "TRANSICAO"; tempoTransicao = ts; }
                 return; 
             }
-
             if (bossAtivo) {
                 if (chefao.y < 60) chefao.y += chefao.velY;
-                else {
-                    chefao.x += chefao.velX;
-                    if (chefao.x <= 10 || chefao.x >= canvas.width - chefao.largura - 10) chefao.velX *= -1;
-                }
+                else { chefao.x += chefao.velX; if (chefao.x <= 10 || chefao.x >= canvas.width - chefao.largura - 10) chefao.velX *= -1; }
                 if (ts - chefao.ultTiro > 850 && chefao.y > 0) {
                     bolasMalditas.push({ x: chefao.x + 20, y: chefao.y + chefao.altura, largura: 16, altura: 16, vel: 6.5 });
                     bolasMalditas.push({ x: chefao.x + chefao.largura - 36, y: chefao.y + chefao.altura, largura: 16, altura: 16, vel: 6.5 });
@@ -508,45 +523,61 @@
             }
         }
 
-        // NOVO: Lógica do Chefão Dengosão (Fase 3)
+        // Lógica do Chefão Dengosão (Fase 3)
         if (faseAtual === 3) {
             if (dengosao.morrendo) {
-                if (Math.random() < 0.30) {
-                    instanciarExplosao(dengosao.x + Math.random()*dengosao.largura, dengosao.y + Math.random()*dengosao.altura, 35, 35);
-                }
-                if (ts - dengosao.tempoMorte > 3500) {
-                    dengosao.morrendo = false;
-                    estadoJogo = "VITORIA";
+                if (Math.random() < 0.30) { instanciarExplosao(dengosao.x + Math.random()*dengosao.largura, dengosao.y + Math.random()*dengosao.altura, 35, 35); }
+                if (ts - dengosao.tempoMorte > 3500) { 
+                    dengosao.morrendo = false; 
+                    estadoJogo = "TRANSICAO"; // MODIFICADO: Em vez de vencer o jogo, vai para a Transição da Fase 4!
+                    tempoTransicao = ts;
                 }
                 return;
             }
 
             if (dengosao.ativo) {
-                if (dengosao.y < 70) {
-                    dengosao.y += dengosao.velY;
-                } else {
-                    dengosao.x += dengosao.velX;
-                    if (dengosao.x <= 10 || dengosao.x >= canvas.width - dengosao.largura - 10) dengosao.velX *= -1;
-                }
+                if (dengosao.y < 70) { dengosao.y += dengosao.velY; } 
+                else { chefao.x = 0; dengosao.x += dengosao.velX; if (dengosao.x <= 10 || dengosao.x >= canvas.width - dengosao.largura - 10) dengosao.velX *= -1; }
 
-                // Ataque 1: Bolas Malditas normais disparadas das laterais
                 if (ts - dengosao.ultTiroBola > 700 && dengosao.y > 0) {
                     bolasMalditas.push({ x: dengosao.x + 15, y: dengosao.y + dengosao.altura, largura: 16, altura: 16, vel: 7.0 });
                     bolasMalditas.push({ x: dengosao.x + dengosao.largura - 31, y: dengosao.y + dengosao.altura, largura: 16, altura: 16, vel: 7.0 });
                     dengosao.ultTiroBola = ts;
                 }
 
-                // Ataque 2: Ataque Destruidor de Ferrão (Direto do centro dele!)
                 if (ts - dengosao.ultTiroFerrao > 1500 && dengosao.y > 0) {
-                    ferroesInimigos.push({
-                        x: dengosao.x + dengosao.largura / 2 - 4,
-                        y: dengosao.y + dengosao.altura - 10,
-                        largura: 10, // Retângulo fino diferenciado para o Ferrão
-                        altura: 35,
-                        vel: 9.5      // Muito perigoso e veloz!
-                    });
+                    ferroesInimigos.push({ x: dengosao.x + dengosao.largura / 2 - 4, y: dengosao.y + dengosao.altura - 10, largura: 10, altura: 35, vel: 9.5 });
                     dengosao.ultTiroFerrao = ts;
                 }
+            }
+        }
+
+        // NOVO: Atualizador Mecânico dos Asteroides (Fase 4)
+        if (faseAtual === 4) {
+            for (let i = asteroides.length - 1; i >= 0; i--) {
+                let ast = asteroides[i];
+                ast.y += ast.velY;
+                ast.angulo += ast.velRotacao;
+
+                // Colisão fatal com a nave do jogador
+                if (verificarColisao(ast, x_jogador)) {
+                    instanciarExplosao(ast.x, ast.y, ast.largura, ast.altura);
+                    asteroides.splice(i, 1);
+                    x_jogador.vida = 0; // Colisão de impacto direto causa explosão fatal!
+                    estadoJogo = "GAMEOVER";
+                    continue;
+                }
+
+                // Passou do painel seguro
+                if (ast.y > painel.y) {
+                    asteroides.splice(i, 1);
+                    countAsteroidesProcessados++;
+                }
+            }
+
+            // Condição de vitória real ao limpar o cinturão de asteroides!
+            if (countAsteroidesProcessados >= META_FIM_ASTEROIDES && asteroides.length === 0) {
+                estadoJogo = "VITORIA";
             }
         }
 
@@ -554,8 +585,7 @@
         for (let i = bolasMalditas.length - 1; i >= 0; i--) {
             let bm = bolasMalditas[i]; bm.y += bm.vel;
             if (verificarColisao(bm, x_jogador)) {
-                instanciarExplosao(bm.x, bm.y, 20, 20);
-                bolasMalditas.splice(i, 1);
+                instanciarExplosao(bm.x, bm.y, 20, 20); bolasMalditas.splice(i, 1);
                 x_jogador.vida--; tremorCena = 10; 
                 if (x_jogador.vida <= 0) { estadoJogo = "GAMEOVER"; }
                 continue;
@@ -563,15 +593,12 @@
             if (bm.y > painel.y) bolasMalditas.splice(i, 1);
         }
 
-        // NOVO: Mover e Processar os Ferrões do Dengosão
+        // Mover e Processar os Ferrões do Dengosão
         for (let i = ferroesInimigos.length - 1; i >= 0; i--) {
-            let fr = ferroesInimigos[i];
-            fr.y += fr.vel;
+            let fr = ferroesInimigos[i]; fr.y += fr.vel;
             if (verificarColisao(fr, x_jogador)) {
-                instanciarExplosao(fr.x, fr.y, 25, 25);
-                ferroesInimigos.splice(i, 1);
-                x_jogador.vida -= 2; // O Ferrão arranca 2 de vida! Cuidado!
-                tremorCena = 20;
+                instanciarExplosao(fr.x, fr.y, 25, 25); ferroesInimigos.splice(i, 1);
+                x_jogador.vida -= 2; tremorCena = 20;
                 if (x_jogador.vida <= 0) { estadoJogo = "GAMEOVER"; }
                 continue;
             }
@@ -581,11 +608,8 @@
         // Lógica Buracos Negros (Fase 2)
         if (faseAtual === 2) {
             let todosPassaram = true;
-
             for (let i = buracosNegros.length - 1; i >= 0; i--) {
-                let bn = buracosNegros[i];
-                bn.y += bn.velocidadeCair;
-
+                let bn = buracosNegros[i]; bn.y += bn.velocidadeCair;
                 if (bn.y < painel.y + 100) todosPassaram = false;
 
                 let centroNaveX = x_jogador.x + x_jogador.largura / 2;
@@ -593,23 +617,15 @@
                 let distancia = Math.sqrt(Math.pow(bn.x - centroNaveX, 2) + Math.pow(bn.y - centroNaveY, 2));
 
                 if (distancia <= bn.raioBoca && !x_jogador.emSucao) {
-                    x_jogador.emSucao = true;
-                    x_jogador.buracoSugador = bn;
-                    tocarSomSucao(); 
+                    x_jogador.emSucao = true; x_jogador.buracoSugador = bn; tocarSomSucao(); 
                 }
                 else if (distancia <= bn.raioAtracao && !x_jogador.emSucao) {
-                    if (centroNaveX < bn.x) x_jogador.x += 1.4;
-                    else x_jogador.x -= 1.4;
-                    if (centroNaveY < bn.y) x_jogador.y += 1.4;
-                    else x_jogador.y -= 1.4;
+                    if (centroNaveX < bn.x) x_jogador.x += 1.4; else x_jogador.x -= 1.4;
+                    if (centroNaveY < bn.y) x_jogador.y += 1.4; else x_jogador.y -= 1.4;
                 }
             }
-
-            // MODIFICADO: Ao invés de ganhar o jogo ao passar os buracos, transiciona para a Fase 3!
             if (todosPassaram && buracosNegros.length > 0 && !x_jogador.emSucao) {
-                estadoJogo = "TRANSICAO";
-                tempoTransition = ts; // Vai disparar a entrada do Dengosão
-                tempoTransicao = ts;
+                estadoJogo = "TRANSICAO"; tempoTransicao = ts;
             }
         }
 
@@ -625,8 +641,7 @@
         }
 
         for (let i = explosoes.length - 1; i >= 0; i--) {
-            explosoes[i].vida--;
-            if (explosoes[i].vida <= 0) explosoes.splice(i, 1);
+            explosoes[i].vida--; if (explosoes[i].vida <= 0) explosoes.splice(i, 1);
         }
     }
 
@@ -643,34 +658,23 @@
             ctx.drawImage(imgFundo, 0, cenario.y1, canvas.width, canvas.height);
             ctx.drawImage(imgFundo, 0, cenario.y2, canvas.width, canvas.height);
         } else {
-            ctx.fillStyle = "#ffffff";
-            estrelasFundo.forEach(est => { ctx.fillRect(est.x, est.y, est.tamanho, est.tamanho); });
+            ctx.fillStyle = "#ffffff"; estrelasFundo.forEach(est => { ctx.fillRect(est.x, est.y, est.tamanho, est.tamanho); });
         }
 
         if (faseAtual === 2) {
             buracosNegros.forEach(bn => {
-                ctx.save();
-                ctx.translate(bn.x, bn.y);
-                ctx.rotate(anguloRotacaoGeral); 
-
+                ctx.save(); ctx.translate(bn.x, bn.y); ctx.rotate(anguloRotacaoGeral); 
                 let gradiente = ctx.createRadialGradient(0, 0, bn.raioBoca - 5, 0, 0, bn.raioAtracao);
-                gradiente.addColorStop(0, "rgba(15, 0, 30, 1)");
-                gradiente.addColorStop(0.3, "rgba(140, 0, 255, 0.45)");
-                gradiente.addColorStop(0.7, "rgba(0, 210, 255, 0.2)");
-                gradiente.addColorStop(1, "rgba(0, 0, 0, 0)");
-                ctx.fillStyle = gradiente;
-                ctx.beginPath(); ctx.arc(0, 0, bn.raioAtracao, 0, Math.PI * 2); ctx.fill();
-
-                ctx.fillStyle = "#000000";
-                ctx.beginPath(); ctx.arc(0, 0, bn.raioBoca, 0, Math.PI * 2); ctx.fill();
-                ctx.strokeStyle = "#a200ff"; ctx.lineWidth = 2; ctx.stroke();
-                ctx.restore();
+                gradiente.addColorStop(0, "rgba(15, 0, 30, 1)"); gradiente.addColorStop(0.3, "rgba(140, 0, 255, 0.45)");
+                gradiente.addColorStop(0.7, "rgba(0, 210, 255, 0.2)"); gradiente.addColorStop(1, "rgba(0, 0, 0, 0)");
+                ctx.fillStyle = gradiente; ctx.beginPath(); ctx.arc(0, 0, bn.raioAtracao, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "#000000"; ctx.beginPath(); ctx.arc(0, 0, bn.raioBoca, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = "#a200ff"; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
             });
         }
 
         powerups.forEach(p => {
-            ctx.fillStyle = p.tipo === "TIRO_DUPLO" ? "#00d2ff" : "#00ff66";
-            ctx.beginPath(); ctx.arc(p.x + 12, p.y + 12, 11, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = p.tipo === "TIRO_DUPLO" ? "#00d2ff" : "#00ff66"; ctx.beginPath(); ctx.arc(p.x + 12, p.y + 12, 11, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText(p.tipo === "TIRO_DUPLO" ? "D" : "V", p.x + 12, p.y + 12);
         });
@@ -682,16 +686,44 @@
 
         batedores.forEach(b => {
             if (b.tipo === 2) {
-                if (imgBatedor2.complete && imgBatedor2.width > 0) {
-                    ctx.drawImage(imgBatedor2, b.x, b.y, b.largura, b.altura);
-                } else { 
-                    ctx.fillStyle = "#a600ff"; ctx.fillRect(b.x, b.y, b.largura, b.altura); 
-                }
+                if (imgBatedor2.complete && imgBatedor2.width > 0) { ctx.drawImage(imgBatedor2, b.x, b.y, b.largura, b.altura); } 
+                else { ctx.fillStyle = "#a600ff"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
             } else {
                 if (imgBatedor.complete && imgBatedor.width > 0) ctx.drawImage(imgBatedor, b.x, b.y, b.largura, b.altura);
                 else { ctx.fillStyle = "#ff2244"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
             }
         });
+
+        // NOVO: Renderizar e Rotacionar de forma limpa os Asteroides da Fase 4
+        if (faseAtual === 4) {
+            asteroides.forEach(ast => {
+                ctx.save();
+                // Move a origem do canvas para o centro do asteroide para rotacionar no próprio eixo
+                ctx.translate(ast.x + ast.largura / 2, ast.y + ast.altura / 2);
+                ctx.rotate(ast.angulo);
+
+                if (ast.tipo === "asteroide_1" && imgAsteroide1.complete && imgAsteroide1.width > 0) {
+                    ctx.drawImage(imgAsteroide1, -ast.largura / 2, -ast.altura / 2, ast.largura, ast.altura);
+                } else if (ast.tipo === "asteroide_2" && imgAsteroide2.complete && imgAsteroide2.width > 0) {
+                    ctx.drawImage(imgAsteroide2, -ast.largura / 2, -ast.altura / 2, ast.largura, ast.altura);
+                } else if (ast.tipo === "asteroide_3" && imgAsteroide3.complete && imgAsteroide3.width > 0) {
+                    ctx.drawImage(imgAsteroide3, -ast.largura / 2, -ast.altura / 2, ast.largura, ast.altura);
+                } else {
+                    // Caixa reserva texturizada caso as imagens falhem no carregamento inicial
+                    ctx.fillStyle = ast.tipo === "asteroide_3" ? "#52433d" : (ast.tipo === "asteroide_2" ? "#736057" : "#9c857a");
+                    ctx.fillRect(-ast.largura / 2, -ast.altura / 2, ast.largura, ast.altura);
+                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.strokeRect(-ast.largura / 2, -ast.altura / 2, ast.largura, ast.altura);
+                }
+                ctx.restore();
+
+                // Pequena barra de vida discreta para os asteroides médios e grandes resilientes
+                if (ast.tipo !== "asteroide_1") {
+                    let maxV = ast.tipo === "asteroide_3" ? 10 : 5;
+                    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(ast.x, ast.y - 7, ast.largura, 4);
+                    ctx.fillStyle = "#ffaa00"; ctx.fillRect(ast.x, ast.y - 7, (ast.vida / maxV) * ast.largura, 4);
+                }
+            });
+        }
 
         // Desenhar Boss Fase 1
         if (faseAtual === 1 && (bossAtivo || bossMorrendo)) {
@@ -703,14 +735,11 @@
             }
         }
 
-        // NOVO: Renderizar o Super Boss Dengosão da Fase 3
+        // Renderizar o Super Boss Dengosão da Fase 3
         if (faseAtual === 3 && (dengosao.ativo || dengosao.morrendo)) {
-            if (imgDengosao.complete && imgDengosao.width > 0) {
-                ctx.drawImage(imgDengosao, dengosao.x, dengosao.y, dengosao.largura, dengosao.altura);
-            } else {
-                // Retângulo de segurança grande e perigoso para o Dengosão
-                ctx.fillStyle = "#2e5a1c"; 
-                ctx.fillRect(dengosao.x, dengosao.y, dengosao.largura, dengosao.altura);
+            if (imgDengosao.complete && imgDengosao.width > 0) { ctx.drawImage(imgDengosao, dengosao.x, dengosao.y, dengosao.largura, dengosao.altura); } 
+            else {
+                ctx.fillStyle = "#2e5a1c"; ctx.fillRect(dengosao.x, dengosao.y, dengosao.largura, dengosao.altura);
                 ctx.fillStyle = "#ffffff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center";
                 ctx.fillText("DENGOSÃO (BOSS)", dengosao.x + dengosao.largura/2, dengosao.y + dengosao.altura/2);
             }
@@ -725,24 +754,15 @@
             else { ctx.fillStyle = "#ffcc00"; ctx.beginPath(); ctx.arc(bm.x+7, bm.y+7, 7, 0, Math.PI*2); ctx.fill(); }
         });
 
-        // NOVO: Desenhar os ferrões do Dengosão
+        // Desenhar os ferrões do Dengosão
         ferroesInimigos.forEach(fr => {
-            if (imgFerrao.complete && imgFerrao.width > 0) {
-                ctx.drawImage(imgFerrao, fr.x, fr.y, fr.largura, fr.altura);
-            } else {
-                // Retângulo diferenciado do ferrão
-                ctx.fillStyle = "#ff4500"; 
-                ctx.fillRect(fr.x, fr.y, fr.largura, fr.altura);
-            }
+            if (imgFerrao.complete && imgFerrao.width > 0) { ctx.drawImage(imgFerrao, fr.x, fr.y, fr.largura, fr.altura); } 
+            else { ctx.fillStyle = "#ff4500"; ctx.fillRect(fr.x, fr.y, fr.largura, fr.altura); }
         });
 
         if (estadoJogo === "JOGANDO" || x_jogador.emSucao) {
-            ctx.save();
-            let cX = x_jogador.x + x_jogador.largura / 2;
-            let cY = x_jogador.y + x_jogador.altura / 2;
-            ctx.translate(cX, cY);
-            ctx.scale(x_jogador.escala, x_jogador.escala); 
-            ctx.rotate(x_jogador.anguloMorte); 
+            ctx.save(); let cX = x_jogador.x + x_jogador.largura / 2; let cY = x_jogador.y + x_jogador.altura / 2;
+            ctx.translate(cX, cY); ctx.scale(x_jogador.escala, x_jogador.escala); ctx.rotate(x_jogador.anguloMorte); 
             
             if (imgNave.complete && imgNave.width > 0) ctx.drawImage(imgNave, -x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura);
             else { ctx.fillStyle = "#00d2ff"; ctx.fillRect(-x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura); }
@@ -754,7 +774,7 @@
             ctx.beginPath(); ctx.arc(ex.x + ex.largura/2, ex.y + ex.altura/2, ex.largura * 1.5, 0, Math.PI*2); ctx.fill();
         });
 
-        // Painel Superior
+        // Painel Superior de Vida
         ctx.fillStyle = "rgba(255, 255, 255, 0.12)"; ctx.fillRect(25, 25, 120, 12);
         if (x_jogador.vida > 0) {
             ctx.fillStyle = x_jogador.vida > 4 ? "#00d2ff" : "#ff2244";
@@ -769,6 +789,7 @@
         let subTextoFase = "Fase 1: Combate Viral";
         if (faseAtual === 2) subTextoFase = "Fase 2: Zona Magnética";
         if (faseAtual === 3) subTextoFase = "Fase 3: O Ninho do Dengosão";
+        if (faseAtual === 4) subTextoFase = "Fase 4: Campo de Asteroides ☄️";
         ctx.fillText(subTextoFase, 25, 68);
 
         // Controles Touch
@@ -783,7 +804,7 @@
             ctx.strokeStyle = "rgba(255, 0, 70, 0.9)"; ctx.lineWidth = 2; ctx.stroke();
         }
 
-        // Telas de Fim/Menus
+        // Telas de Fim/Menus/Transição
         if (estadoJogo === "TRANSICAO") {
             ctx.fillStyle = "rgba(5, 0, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -795,12 +816,19 @@
                 ctx.fillText("FASE 2: Cuidado com os buracos negros!", canvas.width / 2, canvas.height / 2 + 10);
                 ctx.fillStyle = "#ff5500"; ctx.font = "bold 15px sans-serif";
                 ctx.fillText("ZONA MAGNÉTICA", canvas.width / 2, canvas.height / 2 + 45);
-            } else {
+            } else if (faseAtual === 2) {
                 ctx.fillText("ZONA MAGNÉTICA SUPERADA!", canvas.width / 2, canvas.height / 2 - 40);
                 ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif";
                 ctx.fillText("FASE 3: Alerta de Criadouro Máximo!", canvas.width / 2, canvas.height / 2 + 10);
                 ctx.fillStyle = "#ff2244"; ctx.font = "bold 17px sans-serif";
                 ctx.fillText("CHEFE FINAL: O DENGOSÃO EMERGIU!", canvas.width / 2, canvas.height / 2 + 45);
+            } else if (faseAtual === 3) {
+                // Mensagem de Transição para a sua nova Fase 4!
+                ctx.fillText("O DENGOSÃO FOI ANIQUILADO!", canvas.width / 2, canvas.height / 2 - 40);
+                ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif";
+                ctx.fillText("FASE 4: Dobra Espacial Descontrolada!", canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillStyle = "#ffcc00"; ctx.font = "bold 17px sans-serif";
+                ctx.fillText("PERIGO: CINTURÃO DE ASTEROIDES!", canvas.width / 2, canvas.height / 2 + 45);
             }
         }
 
@@ -808,9 +836,13 @@
             ctx.fillStyle = "rgba(5, 5, 15, 0.9)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center";
             ctx.fillStyle = "#00d2ff"; ctx.font = "bold 32px sans-serif";
-            ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 - 60);
+            ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 - 80);
             ctx.fillStyle = "#ffffff"; ctx.font = "14px sans-serif";
-            ctx.fillText("Star Fighter: Luta Social", canvas.width / 2, canvas.height / 2 - 25);
+            ctx.fillText("Star Fighter: Luta Social", canvas.width / 2, canvas.height / 2 - 45);
+
+            // 🔥 O SEU EXCLUSIVO PLACAR DE VISITAS DE GOIÁS NA TELA INICIAL
+            ctx.fillStyle = "#ffcc00"; ctx.font = "bold 13px sans-serif";
+            ctx.fillText("⚡ " + totalPartidasGerais + " PARTIDAS JOGADAS EM GOIÁS!", canvas.width / 2, canvas.height / 2 - 10);
 
             ctx.fillStyle = "#00ffcc"; ctx.fillRect(painel.btnIniciar.x, painel.btnIniciar.y, painel.btnIniciar.l, painel.btnIniciar.a);
             ctx.fillStyle = "#000"; ctx.font = "bold 16px sans-serif"; ctx.textBaseline = "middle";
@@ -824,18 +856,25 @@
             ctx.fillText("FIM DE JOGO", canvas.width / 2, canvas.height / 2 - 40);
             ctx.fillStyle = "#ffffff"; ctx.font = "16px sans-serif";
             ctx.fillText("Placar: " + pontuacao, canvas.width / 2, canvas.height / 2 + 15);
-            ctx.fillStyle = "#666"; ctx.font = "12px sans-serif";
-            ctx.fillText("[Toque ou pressione Enter para reiniciar]", canvas.width / 2, canvas.height / 2 + 80);
+            
+            // Reutiliza o botão iniciar para o clique mobile ficar perfeito no celular
+            ctx.fillStyle = "#ffcc00"; ctx.fillRect(painel.btnIniciar.x, painel.btnIniciar.y, painel.btnIniciar.l, painel.btnIniciar.a);
+            ctx.fillStyle = "#000"; ctx.font = "bold 15px sans-serif";
+            ctx.fillText("JOGAR DE NOVO", canvas.width / 2, painel.btnIniciar.y + 25);
         }
 
         if (estadoJogo === "VITORIA") {
             ctx.fillStyle = "rgba(5, 25, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillStyle = "#00ffcc"; ctx.font = "bold 32px sans-serif";
-            ctx.fillText("CAMPANHA CONCLUÍDA!", canvas.width / 2, canvas.height / 2 - 40);
+            ctx.fillText("GALÁXIA SALVA!", canvas.width / 2, canvas.height / 2 - 50);
             ctx.fillStyle = "#ffffff"; ctx.font = "15px sans-serif";
-            ctx.fillText("O Dengosão foi destruído com sucesso!", canvas.width / 2, canvas.height / 2 + 15);
-            ctx.fillText("Pontuação Final: " + pontuacao, canvas.width / 2, canvas.height / 2 + 45);
+            ctx.fillText("Você superou os vírus e o Cinturão de Asteroides!", canvas.width / 2, canvas.height / 2 + 5);
+            ctx.fillText("Pontuação de Elite: " + pontuacao, canvas.width / 2, canvas.height / 2 + 35);
+            
+            ctx.fillStyle = "#00d2ff"; ctx.fillRect(painel.btnIniciar.x, painel.btnIniciar.y, painel.btnIniciar.l, painel.btnIniciar.a);
+            ctx.fillStyle = "#000"; ctx.font = "bold 15px sans-serif";
+            ctx.fillText("VOLTAR AO MENU", canvas.width / 2, painel.btnIniciar.y + 25);
         }
 
         ctx.restore();
