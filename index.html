@@ -53,6 +53,10 @@
     const imgBolaMaldita = new Image(); imgBolaMaldita.src = "bola_maldita.png"; 
     const imgChefao = new Image(); imgChefao.src = "chefao.png"; 
     const imgFundo = new Image(); imgFundo.src = "fundo.jpg"; 
+    
+    // Novas imagens preparadas para a Fase 3
+    const imgDengosao = new Image(); imgDengosao.src = "dengosao.png";
+    const imgFerrao = new Image(); imgFerrao.src = "ferrao.png";
 
     const estrelasFundo = [];
     for(let i = 0; i < 40; i++) {
@@ -88,7 +92,7 @@
     let faseAtual = 1; 
     let pontuacao = 0;
     let abates = 0;
-    const META_CHEFÃO = 10; 
+    const META_CHEFÃO = 50; // MODIFICADO: Agora precisa matar 50 pragas na fase 1!
     let bossAtivo = false;
     let bossMorrendo = false;
     let tempoMorteBoss = 0;
@@ -107,16 +111,24 @@
     const tiros = [];
     const batedores = []; 
     const bolasMalditas = [];
+    const ferroesInimigos = []; // Array para os novos projéteis do Dengosão
     const explosoes = []; 
     const powerups = []; 
     const buracosNegros = []; 
 
     let ultimoInimigoCriado = 0;
-    let intervaloInimigos = 1600; 
+    let intervaloInimigos = 1400; 
 
+    // Chefão da Fase 1
     const chefao = {
         x: 0, y: -120, largura: 130, altura: 100, velX: 3.5, velY: 1.5,
         vidaMax: 30, vida: 30, ultTiro: 0
+    };
+
+    // NOVO: Estrutura para o Chefão Dengosão (Fase 3)
+    const dengosao = {
+        x: 0, y: -150, largura: 160, altura: 120, velX: 4.5, velY: 1.2,
+        vidaMax: 60, vida: 60, ultTiroBola: 0, ultTiroFerrao: 0, ativo: false, morrendo: false, tempoMorte: 0
     };
 
     const painel = {
@@ -164,9 +176,10 @@
     function reiniciarJogo() {
         pontuacao = 0; abates = 0; faseAtual = 1;
         bossAtivo = false; bossMorrendo = false; tremorCena = 0;
+        dengosao.ativo = false; dengosao.morrendo = false; dengosao.vida = dengosao.vidaMax; dengosao.y = -150;
         x_jogador.vida = x_jogador.vidaMax; x_jogador.tipoTiro = "NORMAL";
         x_jogador.escala = 1; x_jogador.emSucao = false; x_jogador.buracoSugador = null; x_jogador.anguloMorte = 0;
-        tiros.length = 0; batedores.length = 0; bolasMalditas.length = 0;
+        tiros.length = 0; batedores.length = 0; bolasMalditas.length = 0; ferroesInimigos.length = 0;
         explosoes.length = 0; powerups.length = 0; buracosNegros.length = 0;
         chefao.vida = chefao.vidaMax; chefao.y = -120;
         cenario.velocidade = 3.5;
@@ -183,17 +196,32 @@
         tiros.length = 0;
         batedores.length = 0;
         bolasMalditas.length = 0;
+        ferroesInimigos.length = 0;
         
+        // MODIFICADO: Buracos negros bem mais distanciados verticalmente (multiplicado por 650px de espaçamento)
         buracosNegros.length = 0;
         for (let i = 0; i < 6; i++) {
             buracosNegros.push({
                 x: Math.random() * (canvas.width - 90) + 45,
-                y: -150 - (i * 300), 
+                y: -200 - (i * 650), 
                 raioBoca: 25,       
                 raioAtracao: 95,    
                 velocidadeCair: 2.5
             });
         }
+    }
+
+    function iniciarFase3() {
+        faseAtual = 3;
+        estadoJogo = "JOGANDO";
+        cenario.velocidade = 4.0;
+        tiros.length = 0;
+        batedores.length = 0;
+        bolasMalditas.length = 0;
+        ferroesInimigos.length = 0;
+        dengosao.ativo = true;
+        dengosao.x = canvas.width / 2 - dengosao.largura / 2;
+        dengosao.y = -150;
     }
 
     function verificarColisao(a, b) {
@@ -305,9 +333,12 @@
 
         anguloRotacaoGeral += 0.05;
 
+        // Gerenciamento de transições de fase
         if (estadoJogo === "TRANSICAO") {
-            if (ts - tempoTransicao > 3500) {
+            if (faseAtual === 1 && ts - tempoTransicao > 3500) {
                 iniciarFase2();
+            } else if (faseAtual === 2 && ts - tempoTransicao > 3500) {
+                iniciarFase3();
             }
             return;
         }
@@ -344,6 +375,8 @@
         // Mover tiros do jogador
         for (let i = tiros.length - 1; i >= 0; i--) {
             tiros[i].y -= tiros[i].vel;
+            
+            // Dano no Boss da Fase 1
             if (faseAtual === 1 && bossAtivo && verificarColisao(tiros[i], {x: chefao.x, y: chefao.y, largura: chefao.largura, altura: chefao.altura}) && chefao.y > 0) {
                 instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20);
                 tiros.splice(i, 1);
@@ -358,26 +391,47 @@
                 }
                 continue;
             }
+            
+            // NOVO: Dano no Dengosão (Fase 3)
+            if (faseAtual === 3 && dengosao.ativo && !dengosao.morrendo && verificarColisao(tiros[i], {x: dengosao.x, y: dengosao.y, largura: dengosao.largura, altura: dengosao.altura}) && dengosao.y > 0) {
+                instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20);
+                tiros.splice(i, 1);
+                dengosao.vida--;
+                pontuacao += 70;
+                if (dengosao.vida <= 0) {
+                    dengosao.ativo = false;
+                    dengosao.morrendo = true;
+                    dengosao.tempoMorte = ts;
+                    pontuacao += 10000;
+                    tocarSomExplosaoBoss();
+                }
+                continue;
+            }
+
             if (tiros[i] && tiros[i].y + 25 < 0) tiros.splice(i, 1);
         }
 
-        // Criar Inimigos por Fase
-        if (ts - ultimoInimigoCriado > intervaloInimigos) {
+        // Criar Inimigos Normais por Fase
+        // MODIFICADO: No intervalo de tempo da fase 2, aumentamos consideravelmente o nascimento de novos mosquitos
+        let delayCriacao = (faseAtual === 2) ? 450 : intervaloInimigos; 
+
+        if (ts - ultimoInimigoCriado > delayCriacao) {
             if (faseAtual === 1 && !bossAtivo && !bossMorrendo) {
                 batedores.push({ tipo: 1, x: Math.random() * (canvas.width - 45), y: -45, largura: 45, altura: 45, velY: 3.5, ultTiro: ts });
                 ultimoInimigoCriado = ts;
             } 
             else if (faseAtual === 2) {
+                // Liberando hordas maiores de Mosquitos Batedor 2!
                 batedores.push({ 
                     tipo: 2, 
                     x: Math.random() * (canvas.width - 50), 
                     y: -50, 
                     largura: 50, 
                     altura: 50, 
-                    velY: 4.0, 
-                    ultTiro: ts, // Inicializado de forma limpa
+                    velY: 4.2, 
+                    ultTiro: ts,
                     anguloGiro: Math.random() * 5,
-                    larguraZiguezague: 5
+                    larguraZiguezague: 6
                 });
                 ultimoInimigoCriado = ts;
             }
@@ -395,7 +449,6 @@
                 if (b.x > canvas.width - b.largura - 5) b.x = canvas.width - b.largura - 5;
             }
 
-            // CORREÇÃO CRÍTICA DO TIRO: Estrutura de tempo robusta e recalculada para o Batedor 2
             let recarga = b.tipo === 2 ? 1000 : 1400; 
             if (ts - b.ultTiro > recarga && b.y < painel.y - 50 && b.y > 20) {
                 bolasMalditas.push({ 
@@ -405,7 +458,7 @@
                     altura: 14, 
                     vel: b.tipo === 2 ? 6.5 : 5.0 
                 });
-                b.ultTiro = ts; // Sincroniza o relógio interno do inimigo com precisão
+                b.ultTiro = ts; 
             }
 
             for (let j = tiros.length - 1; j >= 0; j--) {
@@ -455,6 +508,48 @@
             }
         }
 
+        // NOVO: Lógica do Chefão Dengosão (Fase 3)
+        if (faseAtual === 3) {
+            if (dengosao.morrendo) {
+                if (Math.random() < 0.30) {
+                    instanciarExplosao(dengosao.x + Math.random()*dengosao.largura, dengosao.y + Math.random()*dengosao.altura, 35, 35);
+                }
+                if (ts - dengosao.tempoMorte > 3500) {
+                    dengosao.morrendo = false;
+                    estadoJogo = "VITORIA";
+                }
+                return;
+            }
+
+            if (dengosao.ativo) {
+                if (dengosao.y < 70) {
+                    dengosao.y += dengosao.velY;
+                } else {
+                    dengosao.x += dengosao.velX;
+                    if (dengosao.x <= 10 || dengosao.x >= canvas.width - dengosao.largura - 10) dengosao.velX *= -1;
+                }
+
+                // Ataque 1: Bolas Malditas normais disparadas das laterais
+                if (ts - dengosao.ultTiroBola > 700 && dengosao.y > 0) {
+                    bolasMalditas.push({ x: dengosao.x + 15, y: dengosao.y + dengosao.altura, largura: 16, altura: 16, vel: 7.0 });
+                    bolasMalditas.push({ x: dengosao.x + dengosao.largura - 31, y: dengosao.y + dengosao.altura, largura: 16, altura: 16, vel: 7.0 });
+                    dengosao.ultTiroBola = ts;
+                }
+
+                // Ataque 2: Ataque Destruidor de Ferrão (Direto do centro dele!)
+                if (ts - dengosao.ultTiroFerrao > 1500 && dengosao.y > 0) {
+                    ferroesInimigos.push({
+                        x: dengosao.x + dengosao.largura / 2 - 4,
+                        y: dengosao.y + dengosao.altura - 10,
+                        largura: 10, // Retângulo fino diferenciado para o Ferrão
+                        altura: 35,
+                        vel: 9.5      // Muito perigoso e veloz!
+                    });
+                    dengosao.ultTiroFerrao = ts;
+                }
+            }
+        }
+
         // Mover bolas malditas
         for (let i = bolasMalditas.length - 1; i >= 0; i--) {
             let bm = bolasMalditas[i]; bm.y += bm.vel;
@@ -468,7 +563,22 @@
             if (bm.y > painel.y) bolasMalditas.splice(i, 1);
         }
 
-        // Lógica Buracos Negros
+        // NOVO: Mover e Processar os Ferrões do Dengosão
+        for (let i = ferroesInimigos.length - 1; i >= 0; i--) {
+            let fr = ferroesInimigos[i];
+            fr.y += fr.vel;
+            if (verificarColisao(fr, x_jogador)) {
+                instanciarExplosao(fr.x, fr.y, 25, 25);
+                ferroesInimigos.splice(i, 1);
+                x_jogador.vida -= 2; // O Ferrão arranca 2 de vida! Cuidado!
+                tremorCena = 20;
+                if (x_jogador.vida <= 0) { estadoJogo = "GAMEOVER"; }
+                continue;
+            }
+            if (fr.y > painel.y) ferroesInimigos.splice(i, 1);
+        }
+
+        // Lógica Buracos Negros (Fase 2)
         if (faseAtual === 2) {
             let todosPassaram = true;
 
@@ -495,8 +605,11 @@
                 }
             }
 
+            // MODIFICADO: Ao invés de ganhar o jogo ao passar os buracos, transiciona para a Fase 3!
             if (todosPassaram && buracosNegros.length > 0 && !x_jogador.emSucao) {
-                estadoJogo = "VITORIA";
+                estadoJogo = "TRANSICAO";
+                tempoTransition = ts; // Vai disparar a entrada do Dengosão
+                tempoTransicao = ts;
             }
         }
 
@@ -504,7 +617,7 @@
         for (let i = powerups.length - 1; i >= 0; i--) {
             powerups[i].y += powerups[i].vel;
             if (verificarColisao(powerups[i], x_jogador)) {
-                if (powerups[i].tipo === "TIRO_DUPLO" ? x_jogador.tipoTiro = "DUPLO" : "");
+                if (powerups[i].tipo === "TIRO_DUPLO") x_jogador.tipoTiro = "DUPLO";
                 if (powerups[i].tipo === "VIDA") x_jogador.vida = Math.min(x_jogador.vidaMax, x_jogador.vida + 3);
                 powerups.splice(i, 1); continue;
             }
@@ -580,6 +693,7 @@
             }
         });
 
+        // Desenhar Boss Fase 1
         if (faseAtual === 1 && (bossAtivo || bossMorrendo)) {
             if (imgChefao.complete && imgChefao.width > 0) ctx.drawImage(imgChefao, chefao.x, chefao.y, chefao.largura, chefao.altura);
             else { ctx.fillStyle = "#7a3311"; ctx.fillRect(chefao.x, chefao.y, chefao.largura, chefao.altura); }
@@ -589,9 +703,37 @@
             }
         }
 
+        // NOVO: Renderizar o Super Boss Dengosão da Fase 3
+        if (faseAtual === 3 && (dengosao.ativo || dengosao.morrendo)) {
+            if (imgDengosao.complete && imgDengosao.width > 0) {
+                ctx.drawImage(imgDengosao, dengosao.x, dengosao.y, dengosao.largura, dengosao.altura);
+            } else {
+                // Retângulo de segurança grande e perigoso para o Dengosão
+                ctx.fillStyle = "#2e5a1c"; 
+                ctx.fillRect(dengosao.x, dengosao.y, dengosao.largura, dengosao.altura);
+                ctx.fillStyle = "#ffffff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText("DENGOSÃO (BOSS)", dengosao.x + dengosao.largura/2, dengosao.y + dengosao.altura/2);
+            }
+            if (dengosao.ativo) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(canvas.width/2 - 100, 15, 200, 8);
+                ctx.fillStyle = "#00ff66"; ctx.fillRect(canvas.width/2 - 100, 15, (dengosao.vida / dengosao.vidaMax) * 200, 8);
+            }
+        }
+
         bolasMalditas.forEach(bm => {
             if (imgBolaMaldita.complete && imgBolaMaldita.width > 0) ctx.drawImage(imgBolaMaldita, bm.x, bm.y, bm.largura, bm.altura);
             else { ctx.fillStyle = "#ffcc00"; ctx.beginPath(); ctx.arc(bm.x+7, bm.y+7, 7, 0, Math.PI*2); ctx.fill(); }
+        });
+
+        // NOVO: Desenhar os ferrões do Dengosão
+        ferroesInimigos.forEach(fr => {
+            if (imgFerrao.complete && imgFerrao.width > 0) {
+                ctx.drawImage(imgFerrao, fr.x, fr.y, fr.largura, fr.altura);
+            } else {
+                // Retângulo diferenciado do ferrão
+                ctx.fillStyle = "#ff4500"; 
+                ctx.fillRect(fr.x, fr.y, fr.largura, fr.altura);
+            }
         });
 
         if (estadoJogo === "JOGANDO" || x_jogador.emSucao) {
@@ -623,7 +765,11 @@
         ctx.fillStyle = "#fff"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "left";
         ctx.fillText("SCORE: " + pontuacao, 25, 52);
         ctx.font = "11px sans-serif";
-        ctx.fillText("FASE " + faseAtual + (faseAtual === 1 ? ": Combate Viral" : ": Zona Magnética"), 25, 68);
+        
+        let subTextoFase = "Fase 1: Combate Viral";
+        if (faseAtual === 2) subTextoFase = "Fase 2: Zona Magnética";
+        if (faseAtual === 3) subTextoFase = "Fase 3: O Ninho do Dengosão";
+        ctx.fillText(subTextoFase, 25, 68);
 
         // Controles Touch
         if (estadoJogo === "JOGANDO") {
@@ -642,11 +788,20 @@
             ctx.fillStyle = "rgba(5, 0, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillStyle = "#00ffcc"; ctx.font = "bold 22px sans-serif";
-            ctx.fillText("PANDEMIA CONTROLADA!", canvas.width / 2, canvas.height / 2 - 40);
-            ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif";
-            ctx.fillText("FASE 2: Cuidado com os buracos negros!", canvas.width / 2, canvas.height / 2 + 10);
-            ctx.fillStyle = "#ff5500"; ctx.font = "bold 15px sans-serif";
-            ctx.fillText("ZONA MAGNÉTICA", canvas.width / 2, canvas.height / 2 + 45);
+            
+            if (faseAtual === 1) {
+                ctx.fillText("PANDEMIA CONTROLADA!", canvas.width / 2, canvas.height / 2 - 40);
+                ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif";
+                ctx.fillText("FASE 2: Cuidado com os buracos negros!", canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillStyle = "#ff5500"; ctx.font = "bold 15px sans-serif";
+                ctx.fillText("ZONA MAGNÉTICA", canvas.width / 2, canvas.height / 2 + 45);
+            } else {
+                ctx.fillText("ZONA MAGNÉTICA SUPERADA!", canvas.width / 2, canvas.height / 2 - 40);
+                ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif";
+                ctx.fillText("FASE 3: Alerta de Criadouro Máximo!", canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillStyle = "#ff2244"; ctx.font = "bold 17px sans-serif";
+                ctx.fillText("CHEFE FINAL: O DENGOSÃO EMERGIU!", canvas.width / 2, canvas.height / 2 + 45);
+            }
         }
 
         if (estadoJogo === "START") {
@@ -677,10 +832,10 @@
             ctx.fillStyle = "rgba(5, 25, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillStyle = "#00ffcc"; ctx.font = "bold 32px sans-serif";
-            ctx.fillText("MISSÃO CONCLUÍDA!", canvas.width / 2, canvas.height / 2 - 40);
+            ctx.fillText("CAMPANHA CONCLUÍDA!", canvas.width / 2, canvas.height / 2 - 40);
             ctx.fillStyle = "#ffffff"; ctx.font = "15px sans-serif";
-            ctx.fillText("Zona Magnética Superada!", canvas.width / 2, canvas.height / 2 + 15);
-            ctx.fillText("Pontos: " + pontuacao, canvas.width / 2, canvas.height / 2 + 45);
+            ctx.fillText("O Dengosão foi destruído com sucesso!", canvas.width / 2, canvas.height / 2 + 15);
+            ctx.fillText("Pontuação Final: " + pontuacao, canvas.width / 2, canvas.height / 2 + 45);
         }
 
         ctx.restore();
