@@ -41,10 +41,11 @@
 </div>
 
 <script>
+    // --- 🎛️ INICIALIZAÇÃO DO CORE DO CANVAS ---
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // --- 🎨 CARREGAMENTO DOS ASSETS GRÁFICOS ---
+    // --- 🎨 SINAL DE CARREGAMENTO DE IMAGENS (ASSETS) ---
     const imgNave = new Image(); imgNave.src = "nave.png"; 
     const imgTiro = new Image(); imgTiro.src = "gosma_verde.png"; 
     const imgBatedor = new Image(); imgBatedor.src = "batedor_1.png"; 
@@ -55,65 +56,64 @@
     const imgDengosao = new Image(); imgDengosao.src = "dengosao.png";
     const imgFerrao = new Image(); imgFerrao.src = "ferrao.png";
 
-    // 🪨 Imagens dos Asteroides do Repositório GitHub
+    // 🪨 Banco de Dados de Imagens dos Asteroides (GitHub)
     const imgAsteroide1 = new Image(); imgAsteroide1.src = "asteroide1.png";
     const imgAsteroide2 = new Image(); imgAsteroide2.src = "asteroide2.png";
     const imgAsteroide3 = new Image(); imgAsteroide3.src = "asteroide3.png";
 
-    // 🚀 Imagens da Transição da Base Espacial
+    // 🚀 Mapeamento das Telas Centrais de Transição de Base
     const imgCockpit = new Image(); imgCockpit.src = "cockpit.png";
-    const imgBase = new Image(); imgBase.src = "base.png";
+    const imgBase = new Image(); imgBase.src = "base.png"; 
     const imgSala = new Image(); imgSala.src = "sala.png";
 
-    // --- 🔊 SISTEMA DE ÁUDIO ---
+    // --- 🔊 SISTEMA DE CONEXÃO DE ÁUDIO ---
     const audioBum = new Audio("bum.mp3");
     const audioChupa = new Audio("chupa.mp3");
     const audioExplosao = new Audio("explosao.mp3");
     const audioTil = new Audio("til.mp3");
 
-    // --- 📊 CONTROLADORES DE ESTADO ---
+    // --- 📊 MEMÓRIA VOLÁTIL E CONFIGURAÇÕES DE JOGO ---
     let totalPartidasGerais = parseInt(localStorage.getItem("ferratech_partidas_locais")) || 147;
     let estadoJogo = "START"; 
     let faseAtual = 1; 
     let pontuacao = 0;
     let abates = 0;
     
+    // Configurações de Metas e Gatilhos
     const META_CHEFÃO = 50; 
     let countAsteroidesProcessados = 0;
     const META_FIM_ASTEROIDES = 15; 
 
-    // Mecânica do Boss
+    // Variáveis de Controle do Boss
     let bossAtivo = false; 
     let bossMorrendo = false; 
-    let tempoMorteBoss = 0;
     const chefaoObj = { x: 0, y: -150, largura: 160, altura: 120, vidaMax: 50, vida: 50, velX: 3, direcao: 1 };
 
-    // Efeitos e Transições Cinematográficas
+    // Controladores de Efeitos Visuais Avançados
     let escalaBasePouso = 0.05; 
     let rotaEscolhidaPorJogador = "";
     let decolagemTamanhoNave = 180; 
     let decolagemOpacidadeBrilho = 0; 
     let decolagemY = 0;
-    let tremorCena = 0;
 
-    // Entidade do Jogador
+    // Definição Física do Objeto do Jogador
     const x_jogador = { 
         x: 0, y: 0, largura: 55, altura: 55, velocidad: 7,
         movendoEsquerda: false, movendoDireita: false, movendoCima: false, movendoBaixo: false,
         vidaMax: 10, vida: 10
     };
 
+    // Parâmetros de Scroll do Fundo
     const cenario = { y1: 0, y2: 0, velocidad: 3.5 };
     
-    // Arrays de Gerenciamento de Entidades
+    // Listas Dinâmicas de Renderização (Arrays)
     const tiros = []; 
     const batedores = []; 
     const bolasMalditas = []; 
     const ferroesInimigos = []; 
     const asteroides = [];
-    const explosoes = [];
 
-    // Controles Layout Mobile
+    // --- 🗺️ COORDENADAS DO INTERFACE E PAINEL MOBILE ---
     const painel = {
         y: 0, altura: 150,
         btnEsq: { x: 15, y: 0, l: 50, a: 50 }, btnDir: { x: 115, y: 0, l: 50, a: 50 },
@@ -124,6 +124,7 @@
         btnOrion: { x: 0, y: 0, l: 240, a: 40 }
     };
 
+    // --- FUNCTION 1: CONFIGURAÇÃO DINÂMICA DO PAINEL ---
     function configurarPainel() {
         painel.y = canvas.height - painel.altura;
         cenario.y2 = -canvas.height;
@@ -140,6 +141,7 @@
         }
     }
 
+    // --- FUNCTION 2: AJUSTE DE RESPONSIVIDADE (TELA) ---
     function ajustarTela() {
         let larguraJanela = window.innerWidth; let alturaJanela = window.innerHeight;
         canvas.height = alturaJanela; canvas.width = alturaJanela * (9 / 16);
@@ -147,26 +149,200 @@
         configurarPainel();
     }
 
+    // --- FUNCTION 3: EVENTO DE NOVO LOG DE PARTIDA ---
     function registrarNovaPartida() {
         totalPartidasGerais++; localStorage.setItem("ferratech_partidas_locais", totalPartidasGerais);
         if (typeof gtag === 'function') { gtag('event', 'partida_iniciada', { 'value': totalPartidasGerais }); }
     }
 
+    // --- FUNCTION 4: RESET COMPLETO DAS VARIÁVEIS ---
     function reiniciarJogo() {
         registrarNovaPartida();
         pontuacao = 0; abates = 0; faseAtual = 1; countAsteroidesProcessados = 0; escalaBasePouso = 0.05;
         decolagemTamanhoNave = 180; decolagemOpacidadeBrilho = 0; bossAtivo = false; bossMorrendo = false;
         chefaoObj.vida = chefaoObj.vidaMax; chefaoObj.y = -150;
         x_jogador.vida = x_jogador.vidaMax; 
-        tiros.length = 0; asteroides.length = 0; batedores.length = 0; bolasMalditas.length = 0; ferroesInimigos.length = 0; explosoes.length = 0;
+        tiros.length = 0; asteroides.length = 0; batedores.length = 0; bolasMalditas.length = 0; ferroesInimigos.length = 0;
         estadoJogo = "JOGANDO";
     }
 
+    // --- FUNCTION 5: ALGORITMO DETECTOR DE INTERSECÇÃO ---
     function verificarColisao(a, b) {
         return a.x < b.x + b.largura && a.x + a.largura > b.x && a.y < b.y + b.altura && a.y + a.altura > b.y;
     }
 
-    // --- DETECÇÃO DE TOQUES E CLIQUES ---
+    // --- FUNCTION 6: GERADOR DE EVENTOS DE INIMIGOS COMUNS ---
+    function gerarInimigos() {
+        if (bossAtivo || faseAtual === 4) return;
+
+        // Controle de spawn aleatório e limite de batedores simultâneos
+        if (Math.random() < 0.03 && batedores.length < 4) {
+            batedores.push({ x: Math.random()*(canvas.width-45), y: -50, largura: 45, altura: 45, velY: 3, tipo: Math.random() > 0.5 ? 1 : 2 });
+        }
+        // Liberação das Bolas Malditas na Fase 2 ou superior
+        if (faseAtual >= 2 && Math.random() < 0.015 && bolasMalditas.length < 2) {
+            bolasMalditas.push({ x: Math.random()*(canvas.width-40), y: -45, largura: 40, altura: 40, velY: 4, velX: Math.random() > 0.5 ? 2 : -2 });
+        }
+        // Ativar disparo de ferrões pelos inimigos de linha na Fase 3
+        if (faseAtual === 3 && Math.random() < 0.02) {
+            batedores.forEach(b => {
+                if (Math.random() < 0.2) ferroesInimigos.push({ x: b.x + 20, y: b.y + 40, largura: 8, altura: 20, velY: 6 });
+            });
+        }
+    }
+
+    // --- FUNCTION 7: GERADOR DE LINHA DE ASTEROIDES (FASE 4) ---
+    function gerarAsteroides() {
+        if (faseAtual !== 4 || countAsteroidesProcessados >= META_FIM_ASTEROIDES) return;
+
+        if (asteroides.length < 4) {
+            let sorteio = Math.random();
+            let tipoAst = "1"; let tam = 42;
+            if (sorteio > 0.75) { tipoAst = "3"; tam = 68; }
+            else if (sorteio > 0.45) { tipoAst = "2"; tam = 52; }
+            asteroides.push({ tipo: tipoAst, x: Math.random()*(canvas.width - tam), y: -70, largura: tam, altura: tam, velY: 3.8 });
+        }
+    }
+
+    // --- FUNCTION 8: ATUALIZADOR FÍSICO DO PLAYER ---
+    function atualizarMovimentacaoJogador() {
+        if (x_jogador.movendoEsquerda && x_jogador.x > 0) x_jogador.x -= x_jogador.velocidad;
+        if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidad;
+        if (x_jogador.movendoCima && x_jogador.y > 0) x_jogador.y -= x_jogador.velocidad;
+        if (x_jogador.movendoBaixo && x_jogador.y < painel.y - x_jogador.altura) x_jogador.y += x_jogador.velocidad;
+    }
+
+    // --- FUNCTION 9: INTELIGÊNCIA ARTIFICIAL E TRAJETÓRIAS ---
+    function moverInimigosEColisoes() {
+        // Movendo e validando batedores comuns
+        batedores.forEach((b, idx) => {
+            b.y += b.velY;
+            if (verificarColisao(b, x_jogador)) { x_jogador.vida--; batedores.splice(idx, 1); if(audioBum.readyState >= 2) audioBum.play().catch(()=>{}); }
+            if (b.y > painel.y) batedores.splice(idx, 1);
+        });
+
+        // Movendo e rebatendo bolas malditas nas bordas
+        bolasMalditas.forEach((b, idx) => {
+            b.y += b.velY; b.x += b.velX;
+            if (b.x <= 0 || b.x >= canvas.width - b.largura) b.velX *= -1;
+            if (verificarColisao(b, x_jogador)) { x_jogador.vida -= 2; bolasMalditas.splice(idx, 1); }
+            if (b.y > painel.y) bolasMalditas.splice(idx, 1);
+        });
+
+        // Movendo projéteis (ferrões inimigos)
+        ferroesInimigos.forEach((f, idx) => {
+            f.y += f.velY;
+            if (verificarColisao(f, x_jogador)) { x_jogador.vida--; ferroesInimigos.splice(idx, 1); }
+            if (f.y > painel.y) ferroesInimigos.splice(idx, 1);
+        });
+
+        // Movendo barreira de asteroides
+        for (let i = asteroides.length - 1; i >= 0; i--) {
+            asteroides[i].y += asteroides[i].velY;
+            if (verificarColisao(asteroides[i], x_jogador)) {
+                x_jogador.vida -= 2; asteroides.splice(i, 1);
+                if(audioBum.readyState >= 2) audioBum.cloneNode().play().catch(()=>{});
+                continue;
+            }
+            if (asteroides[i].y > painel.y) asteroides.splice(i, 1);
+        }
+    }
+
+    // --- FUNCTION 10: MECÂNICA COMPLETA DO CHEFÃO (BOSS) ---
+    function atualizarMecanicaBoss() {
+        if (!bossAtivo || bossMorrendo) return;
+
+        if (chefaoObj.y < 60) chefaoObj.y += 2;
+        chefaoObj.x += chefaoObj.velX * chefaoObj.direcao;
+        
+        if (chefaoObj.x <= 10 || chefaoObj.x >= canvas.width - chefaoObj.largura - 10) {
+            chefaoObj.direcao *= -1;
+        }
+
+        // Ataque de rajada do Boss
+        if (Math.random() < 0.05) {
+            ferroesInimigos.push({ x: chefaoObj.x + chefaoObj.largura/2, y: chefaoObj.y + chefaoObj.altura, largura: 12, altura: 25, velY: 7 });
+        }
+    }
+
+    // --- FUNCTION 11: GERENCIADOR DE DANO DOS LASERS (TIROS) ---
+    function moverTirosEImpactos() {
+        for (let i = tiros.length - 1; i >= 0; i--) {
+            tiros[i].y -= tiros[i].vel;
+            let tiroRemovido = false;
+
+            // Verificação de Impacto em Asteroides
+            for (let j = asteroides.length - 1; j >= 0; j--) {
+                if (verificarColisao(tiros[i], asteroides[j])) {
+                    asteroides.splice(j, 1); tiroRemovido = true;
+                    countAsteroidesProcessados++; pontuacao += 150;
+                    if(audioExplosao.readyState >= 2) audioExplosao.cloneNode().play().catch(()=>{});
+                    break;
+                }
+            }
+            if (tiroRemovido) { tiros.splice(i, 1); continue; }
+
+            // Verificação de Impacto em Batedores
+            for (let k = batedores.length - 1; k >= 0; k--) {
+                if (verificarColisao(tiros[i], batedores[k])) {
+                    batedores.splice(k, 1); tiroRemovido = true; abates++; pontuacao += 100;
+                    break;
+                }
+            }
+            if (tiroRemovido) { tiros.splice(i, 1); continue; }
+
+            // Verificação de Dano no Boss
+            if (bossAtivo && !bossMorrendo && verificarColisao(tiros[i], chefaoObj)) {
+                chefaoObj.vida--; tiroRemovido = true;
+                if (chefaoObj.vida <= 0) {
+                    bossMorrendo = true; faseAtual = 4; bossAtivo = false;
+                }
+                tiros.splice(i, 1); continue;
+            }
+
+            if (tiros[i].y < 0) tiros.splice(i, 1);
+        }
+    }
+
+    // --- FUNCTION 12: MÁQUINA DE FLUXO DE FILTRO DE FASES ---
+    function gerenciarFluxoFases() {
+        if (x_jogador.vida <= 0) { estadoJogo = "GAMEOVER"; return; }
+
+        // Ativação do Boss ao bater a meta de abates
+        if (abates >= META_CHEFÃO && !bossAtivo && faseAtual < 4) {
+            bossAtivo = true;
+            if(audioChupa.readyState >= 2) audioChupa.play().catch(()=>{});
+        }
+
+        // Evolução de fases baseadas em pontuação/abates intermediários
+        if (abates >= 15 && abates < 35 && faseAtual === 1) faseAtual = 2;
+        if (abates >= 35 && abates < META_CHEFÃO && faseAtual === 2) faseAtual = 3;
+
+        // Fim da barreira de asteroides -> Pouso Automático na Base ASH
+        if (faseAtual === 4 && countAsteroidesProcessados >= META_FIM_ASTEROIDES && asteroides.length === 0) {
+            estadoJogo = "POUSO_BASE"; escalaBasePouso = 0.05;
+        }
+    }
+
+    // --- FUNCTION 13: ANIMADOR DE TRANSIÇÃO (BASE E DECOLAGEM) ---
+    function executarCinematicas() {
+        if (estadoJogo === "POUSO_BASE") {
+            if (escalaBasePouso < 1.0) escalaBasePouso += 0.0035;
+            else estadoJogo = "SALA_COMANDO";
+        }
+
+        if (estadoJogo === "DECOLAGEM") {
+            decolagemY -= 5;
+            if (decolagemTamanhoNave > 1) {
+                decolagemTamanhoNave -= 1.6;
+                decolagemOpacidadeBrilho = Math.min(1, decolagemOpacidadeBrilho + 0.02);
+            } else {
+                estadoJogo = "VITORIA";
+            }
+        }
+    }
+
+    // --- FUNCTION 14: TOQUES INTERATIVOS E SELEÇÃO DE MISSÕES ---
     canvas.addEventListener("touchstart", e => {
         const rect = canvas.getBoundingClientRect(); const t = e.changedTouches[0];
         const tx = t.clientX - rect.left; const ty = t.clientY - rect.top;
@@ -203,7 +379,7 @@
 
         let d = Math.sqrt(Math.pow(tx - painel.btnAtirar.x, 2) + Math.pow(ty - painel.btnAtirar.y, 2));
         if (d <= painel.btnAtirar.raio && estadoJogo === "JOGANDO") {
-            tiros.push({ x: x_jogador.x + x_jogador.largura/2 - 5, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 14 });
+            tiros.push({ x: x_jogador.x + x_jogador.largura/2 - 5, y: x_jogador.y - 25, largura: 10, height: 25, vel: 14 });
             if(audioTil.readyState >= 2) audioTil.cloneNode().play().catch(()=>{});
         }
         processarMovimentoTouch(e);
@@ -224,160 +400,27 @@
     canvas.addEventListener("touchmove", processarMovimentoTouch, { passive: false });
     canvas.addEventListener("touchend", processarMovimentoTouch, { passive: false });
 
-    // --- MOTOR DE PROCESSAMENTO DE LÓGICA ---
+    // --- FUNCTION 15: MASTER ENGINE LOOP (PROCESSO CENTRAL) ---
     function atualizar(ts) {
-        if (estadoJogo === "POUSO_BASE") {
-            if (escalaBasePouso < 1.0) escalaBasePouso += 0.0035;
-            else estadoJogo = "SALA_COMANDO";
-            return;
-        }
-
-        if (estadoJogo === "DECOLAGEM") {
-            decolagemY -= 5;
-            if (decolagemTamanhoNave > 1) {
-                decolagemTamanhoNave -= 1.6;
-                decolagemOpacidadeBrilho = Math.min(1, decolagemOpacidadeBrilho + 0.02);
-            } else {
-                estadoJogo = "VITORIA";
-            }
-            return;
-        }
-
+        executarCinematicas();
+        
         if (estadoJogo !== "JOGANDO") return;
 
-        // Movimentação do Fundo Espacial
+        // Rolagem Infinita da Imagem de Fundo Espacial
         cenario.y1 += cenario.velocidade; cenario.y2 += cenario.velocidade;
         if (cenario.y1 >= canvas.height) cenario.y1 = -canvas.height;
         if (cenario.y2 >= canvas.height) cenario.y2 = -canvas.height;
 
-        // Movimentação da Nave do Jogador
-        if (x_jogador.movendoEsquerda && x_jogador.x > 0) x_jogador.x -= x_jogador.velocidad;
-        if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidad;
-        if (x_jogador.movendoCima && x_jogador.y > 0) x_jogador.y -= x_jogador.velocidad;
-        if (x_jogador.movendoBaixo && x_jogador.y < painel.y - x_jogador.altura) x_jogador.y += x_jogador.velocidad;
-
-        // --- MÁQUINA DE FLUXO DE FASES INTERNAS ---
-        if (abates >= META_CHEFÃO && !bossAtivo && faseAtual < 4) {
-            bossAtivo = true;
-            if(audioChupa.readyState >= 2) audioChupa.play().catch(()=>{});
-        }
-
-        // Sistema Intermediário de Inimigos (Fases 1, 2 e 3)
-        if (!bossAtivo && faseAtual < 4) {
-            if (Math.random() < 0.03 && batedores.length < 4) {
-                batedores.push({ x: Math.random()*(canvas.width-45), y: -50, largura: 45, altura: 45, velY: 3, tipo: Math.random() > 0.5 ? 1 : 2 });
-            }
-            if (faseAtual >= 2 && Math.random() < 0.015 && bolasMalditas.length < 2) {
-                bolasMalditas.push({ x: Math.random()*(canvas.width-40), y: -45, largura: 40, altura: 40, velY: 4, velX: Math.random() > 0.5 ? 2 : -2 });
-            }
-            if (faseAtual === 3 && Math.random() < 0.02) {
-                // Inimigo Dengosão Atira Ferrão
-                batedores.forEach(b => {
-                    if (Math.random() < 0.2) ferroesInimigos.push({ x: b.x + 20, y: b.y + 40, largura: 8, altura: 20, velY: 6 });
-                });
-            }
-        }
-
-        // LÓGICA EXCLUSIVA DA FASE 4 (ASTEROIDES GITHUB)
-        if (faseAtual === 4 && asteroides.length < 4 && countAsteroidesProcessados < META_FIM_ASTEROIDES) {
-            let sorteio = Math.random();
-            let tipoAst = "1"; let tam = 42;
-            if (sorteio > 0.75) { tipoAst = "3"; tam = 68; }
-            else if (sorteio > 0.45) { tipoAst = "2"; tam = 52; }
-            asteroides.push({ tipo: tipoAst, x: Math.random()*(canvas.width - tam), y: -70, largura: tam, altura: tam, velY: 3.8 });
-        }
-
-        // Inteligência e Movimentação do Chefão (Boss)
-        if (bossAtivo && !bossMorrendo) {
-            if (chefaoObj.y < 60) chefaoObj.y += 2;
-            chefaoObj.x += chefaoObj.velX * chefaoObj.direcao;
-            if (chefaoObj.x <= 10 || chefaoObj.x >= canvas.width - chefaoObj.largura - 10) {
-                chefaoObj.direcao *= -1;
-            }
-            if (Math.random() < 0.05) {
-                ferroeisInimigos.push({ x: chefaoObj.x + chefaoObj.largura/2, y: chefaoObj.y + chefaoObj.altura, largura: 12, altura: 25, velY: 7 });
-            }
-        }
-
-        // --- PROCESSAMENTO DE COLISÕES ---
-        // Queda dos Inimigos Comuns
-        batedores.forEach((b, idx) => {
-            b.y += b.velY;
-            if (verificarColisao(b, x_jogador)) { x_jogador.vida--; batedores.splice(idx, 1); if(audioBum.readyState >= 2) audioBum.play().catch(()=>{}); }
-            if (b.y > painel.y) batedores.splice(idx, 1);
-        });
-
-        bolasMalditas.forEach((b, idx) => {
-            b.y += b.velY; b.x += b.velX;
-            if (b.x <= 0 || b.x >= canvas.width - b.largura) b.velX *= -1;
-            if (verificarColisao(b, x_jogador)) { x_jogador.vida -= 2; bolasMalditas.splice(idx, 1); }
-            if (b.y > painel.y) bolasMalditas.splice(idx, 1);
-        });
-
-        ferroesInimigos.forEach((f, idx) => {
-            f.y += f.velY;
-            if (verificarColisao(f, x_jogador)) { x_jogador.vida--; ferroesInimigos.splice(idx, 1); }
-            if (f.y > painel.y) ferroesInimigos.splice(idx, 1);
-        });
-
-        // Movimento dos Asteroides (Fase 4)
-        for (let i = asteroides.length - 1; i >= 0; i--) {
-            asteroides[i].y += asteroides[i].velY;
-            if (verificarColisao(asteroides[i], x_jogador)) {
-                x_jogador.vida -= 2; asteroides.splice(i, 1);
-                if(audioBum.readyState >= 2) audioBum.cloneNode().play().catch(()=>{});
-                if (x_jogador.vida <= 0) estadoJogo = "GAMEOVER";
-                continue;
-            }
-            if (asteroides[i].y > painel.y) asteroides.splice(i, 1);
-        }
-
-        // Movimentação e Validação do Destino dos Tiros
-        for (let i = tiros.length - 1; i >= 0; i--) {
-            tiros[i].y -= tiros[i].vel;
-            let tiroRemovido = false;
-
-            // Impacto nos Asteroides
-            for (let j = asteroides.length - 1; j >= 0; j--) {
-                if (verificarColisao(tiros[i], asteroides[j])) {
-                    asteroides.splice(j, 1); tiroRemovido = true;
-                    countAsteroidesProcessados++; pontuacao += 150;
-                    if(audioExplosao.readyState >= 2) audioExplosao.cloneNode().play().catch(()=>{});
-                    break;
-                }
-            }
-            if (tiroRemovido) { tiros.splice(i, 1); continue; }
-
-            // Impacto nos Batedores Comuns
-            for (let k = batedores.length - 1; k >= 0; k--) {
-                if (verificarColisao(tiros[i], batedores[k])) {
-                    batedores.splice(k, 1); tiroRemovido = true; abates++; pontuacao += 100;
-                    break;
-                }
-            }
-            if (tiroRemovido) { tiros.splice(i, 1); continue; }
-
-            // Impacto no Boss
-            if (bossAtivo && !bossMorrendo && verificarColisao(tiros[i], chefaoObj)) {
-                chefaoObj.vida--; tiroRemovido = true;
-                if (chefaoObj.vida <= 0) {
-                    bossMorrendo = true; faseAtual = 4; bossAtivo = false; // Avança para a barreira de asteroides
-                }
-                tiros.splice(i, 1); continue;
-            }
-
-            if (tiros[i].y < 0) tiros.splice(i, 1);
-        }
-
-        if (x_jogador.vida <= 0) estadoJogo = "GAMEOVER";
-
-        // Transição direta da Fase de Asteroides terminada para a Base Espacial
-        if (faseAtual === 4 && countAsteroidesProcessados >= META_FIM_ASTEROIDES && asteroides.length === 0) {
-            estadoJogo = "POUSO_BASE"; escalaBasePouso = 0.05;
-        }
+        atualizarMovimentacaoJogador();
+        gerarInimigos();
+        gerarAsteroides();
+        atualizarMecanicaBoss();
+        moverInimigosEColisoes();
+        moverTirosEImpactos();
+        gerenciarFluxoFases();
     }
 
-    // --- MOTOR GRÁFICO (RENDER DO CANVAS) ---
+    // --- FUNCTION 16: RENDERIZADOR GRÁFICO (RELAÇÃO DE TELAS) ---
     function desenhar() {
         ctx.fillStyle = "#05050d"; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -389,7 +432,6 @@
         }
 
         if (estadoJogo === "JOGANDO") {
-            // Desenho dos Inimigos Clássicos das primeiras fases
             batedores.forEach(b => {
                 let imgB = b.tipo === 1 ? imgBatedor : imgBatedor2;
                 if (imgB.complete) ctx.drawImage(imgB, b.x, b.y, b.largura, b.altura);
@@ -403,30 +445,25 @@
                 ctx.fillStyle = "#ff0055"; ctx.fillRect(f.x, f.y, f.largura, f.altura);
             });
 
-            // Render das Fotos dos Asteroides (GitHub)
+            // Parâmetros de Desenho dos Asteroides Corrigidos
             asteroides.forEach(ast => {
                 if (ast.tipo === "3" && imgAsteroide3.complete) ctx.drawImage(imgAsteroide3, ast.x, ast.y, ast.largura, ast.altura);
                 else if (ast.tipo === "2" && imgAsteroide2.complete) ctx.drawImage(imgAsteroide2, ast.x, ast.y, ast.largura, ast.altura);
                 else if (imgAsteroide1.complete) ctx.drawImage(imgAsteroide1, ast.x, ast.y, ast.largura, ast.altura);
             });
 
-            // Render do Grande Boss
             if (bossAtivo && imgChefao.complete) {
                 ctx.drawImage(imgChefao, chefaoObj.x, chefaoObj.y, chefaoObj.largura, chefaoObj.altura);
-                // Barra de Energia do Boss
                 ctx.fillStyle = "#ffcc00"; ctx.fillRect(canvas.width/2 - 60, 10, (chefaoObj.vida/chefaoObj.vidaMax)*120, 6);
             }
 
-            // Tiros e Nave do Piloto
-            tiros.forEach(t => { if(imgTiro.complete) ctx.drawImage(imgTiro, t.x, t.y, t.largura, t.altura); else { ctx.fillStyle = "#00ffcc"; ctx.fillRect(t.x, t.y, t.largura, t.altura); } });
+            tiros.forEach(t => { if(imgTiro.complete) ctx.drawImage(imgTiro, t.x, t.y, t.largura, t.height); else { ctx.fillStyle = "#00ffcc"; ctx.fillRect(t.x, t.y, t.largura, t.height); } });
             if (imgNave.complete) ctx.drawImage(imgNave, x_jogador.x, x_jogador.y, x_jogador.largura, x_jogador.altura);
 
-            // Barra de Escudo da Nave
             ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(15, 15, 110, 10);
             ctx.fillStyle = "#00ffaa"; ctx.fillRect(15, 15, (x_jogador.vida / x_jogador.vidaMax) * 110, 10);
         }
 
-        // 🎬 TELAS DE TRANSIÇÃO DA BASE ESPACIAL
         if (estadoJogo === "POUSO_BASE") {
             if (imgBase.complete) {
                 let lb = canvas.width * escalaBasePouso; let ab = canvas.height * escalaBasePouso;
@@ -470,7 +507,6 @@
             ctx.fillText(AVANTE PARA ${rotaEscolhidaPorJogador}!, canvas.width / 2, 80);
         }
 
-        // HUD Dos Botões de Controle (Modo JOGANDO)
         if (estadoJogo === "JOGANDO") {
             ctx.fillStyle = "rgba(255, 255, 255, 0.2)"; ctx.font = "bold 20px sans-serif"; ctx.textAlign = "center";
             ctx.fillText("▲", painel.btnCima.x + 25, painel.btnCima.y + 25);
@@ -510,6 +546,7 @@
         }
     }
 
+    // --- LOOP CONSTRUTOR PADRÃO ---
     function loop(timestamp) {
         atualizar(timestamp || performance.now());
         desenhar();
