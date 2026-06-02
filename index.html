@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Star Fighter - Ferratech Jogos Campanha Social</title>
     
-    <!-- 📡 ANTENA INTEGRADA DO GOOGLE ANALYTICS -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-WHGRWM2R8F"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -402,7 +401,7 @@
                 continue;
             }
 
-            // NOVO: Dano estruturado nos Asteroides (Fase 4)
+            // Dano estruturado nos Asteroides (Fase 4)
             if (faseAtual === 4) {
                 let tiroDestruido = false;
                 for (let aIdx = asteroides.length - 1; aIdx >= 0; aIdx--) {
@@ -449,7 +448,7 @@
             }
         }
 
-        // NOVO: Gerador Inteligente de Asteroides para a Fase 4
+        // Gerador Inteligente de Asteroides para a Fase 4
         if (faseAtual === 4 && ts - ultimoAsteroideCriado > 1100 && countAsteroidesProcessados < META_FIM_ASTEROIDES) {
             let dadosSorteio = Math.random();
             let nomeTipo = "asteroide_1";
@@ -529,7 +528,7 @@
                 if (Math.random() < 0.30) { instanciarExplosao(dengosao.x + Math.random()*dengosao.largura, dengosao.y + Math.random()*dengosao.altura, 35, 35); }
                 if (ts - dengosao.tempoMorte > 3500) { 
                     dengosao.morrendo = false; 
-                    estadoJogo = "TRANSICAO"; // MODIFICADO: Em vez de vencer o jogo, vai para a Transição da Fase 4!
+                    estadoJogo = "TRANSICAO"; 
                     tempoTransicao = ts;
                 }
                 return;
@@ -552,7 +551,7 @@
             }
         }
 
-        // NOVO: Atualizador Mecânico dos Asteroides (Fase 4)
+        // Atualizador Mecânico dos Asteroides (Fase 4)
         if (faseAtual === 4) {
             for (let i = asteroides.length - 1; i >= 0; i--) {
                 let ast = asteroides[i];
@@ -563,7 +562,7 @@
                 if (verificarColisao(ast, x_jogador)) {
                     instanciarExplosao(ast.x, ast.y, ast.largura, ast.altura);
                     asteroides.splice(i, 1);
-                    x_jogador.vida = 0; // Colisão de impacto direto causa explosão fatal!
+                    x_jogador.vida = 0; 
                     estadoJogo = "GAMEOVER";
                     continue;
                 }
@@ -694,11 +693,13 @@
             }
         });
 
-        // NOVO: Renderizar e Rotacionar de forma limpa os Asteroides da Fase 4
+        // =================================================================
+        // ☄️ AJUSTADO CIRURGICAMENTE: RENDERIZADOR REAL DOS ASTEROIDES
+        // =================================================================
         if (faseAtual === 4) {
             asteroides.forEach(ast => {
                 ctx.save();
-                // Move a origem do canvas para o centro do asteroide para rotacionar no próprio eixo
+                // Transporta e rotaciona o contexto centralizado no próprio asteroide
                 ctx.translate(ast.x + ast.largura / 2, ast.y + ast.altura / 2);
                 ctx.rotate(ast.angulo);
 
@@ -769,10 +770,11 @@
             ctx.restore();
         }
 
-        explosoes.forEach(ex => {
+        for (let i = explosoes.length - 1; i >= 0; i--) {
+            let ex = explosoes[i];
             ctx.fillStyle = "rgba(255, 90, 0, " + (ex.vida / ex.vidaMax) + ")";
             ctx.beginPath(); ctx.arc(ex.x + ex.largura/2, ex.y + ex.altura/2, ex.largura * 1.5, 0, Math.PI*2); ctx.fill();
-        });
+        }
 
         // Painel Superior de Vida
         ctx.fillStyle = "rgba(255, 255, 255, 0.12)"; ctx.fillRect(25, 25, 120, 12);
@@ -823,7 +825,6 @@
                 ctx.fillStyle = "#ff2244"; ctx.font = "bold 17px sans-serif";
                 ctx.fillText("CHEFE FINAL: O DENGOSÃO EMERGIU!", canvas.width / 2, canvas.height / 2 + 45);
             } else if (faseAtual === 3) {
-                // Mensagem de Transição para a sua nova Fase 4!
                 ctx.fillText("O DENGOSÃO FOI ANIQUILADO!", canvas.width / 2, canvas.height / 2 - 40);
                 ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif";
                 ctx.fillText("FASE 4: Dobra Espacial Descontrolada!", canvas.width / 2, canvas.height / 2 + 10);
@@ -840,7 +841,7 @@
             ctx.fillStyle = "#ffffff"; ctx.font = "14px sans-serif";
             ctx.fillText("Star Fighter: Luta Social", canvas.width / 2, canvas.height / 2 - 45);
 
-            // 🔥 O SEU EXCLUSIVO PLACAR DE VISITAS DE GOIÁS NA TELA INICIAL
+            // 🔥 PLACAR DE VISITAS DE GOIÁS NA TELA INICIAL
             ctx.fillStyle = "#ffcc00"; ctx.font = "bold 13px sans-serif";
             ctx.fillText("⚡ " + totalPartidasGerais + " PARTIDAS JOGADAS EM GOIÁS!", canvas.width / 2, canvas.height / 2 - 10);
 
@@ -857,7 +858,6 @@
             ctx.fillStyle = "#ffffff"; ctx.font = "16px sans-serif";
             ctx.fillText("Placar: " + pontuacao, canvas.width / 2, canvas.height / 2 + 15);
             
-            // Reutiliza o botão iniciar para o clique mobile ficar perfeito no celular
             ctx.fillStyle = "#ffcc00"; ctx.fillRect(painel.btnIniciar.x, painel.btnIniciar.y, painel.btnIniciar.l, painel.btnIniciar.a);
             ctx.fillStyle = "#000"; ctx.font = "bold 15px sans-serif";
             ctx.fillText("JOGAR DE NOVO", canvas.width / 2, painel.btnIniciar.y + 25);
