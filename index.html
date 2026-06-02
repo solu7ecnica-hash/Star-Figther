@@ -70,7 +70,7 @@
     const imgAsteroide2 = new Image(); imgAsteroide2.src = "asteroide_2.png";
     const imgAsteroide3 = new Image(); imgAsteroide3.src = "asteroide_3.png";
 
-    // 🛸 JUMPER: NOVOS ASSETS DA ANIMAÇÃO DA ESTAÇÃO ESPACIAL (HOSPEDADOS NO GITHUB)
+    // 🛸 ASSETS DA ANIMAÇÃO DA ESTAÇÃO ESPACIAL
     const imgCockpit = new Image(); imgCockpit.src = "cockpit.png";
     const imgBaseEspacial = new Image(); imgBaseEspacial.src = "base.png";
     const imgSalaControle = new Image(); imgSalaControle.src = "sala.png";
@@ -130,14 +130,18 @@
     let tremorCena = 0; 
     let anguloRotacaoGeral = 0; 
 
-    // 🚀 VARIÁVEIS DE ESTADO DA CINEMÁTICA FINAL DE POUSO
+    // 🚀 VARIÁVEIS DE ESTADO DA CINEMÁTICA FINAL DE POUSO E NOVA DECOLAGEM
     let subEstadoCinematica = "PILOTO_AUTOMATICO"; 
     let tempoInicioCinematica = 0;
     let escalaBaseEspacial = 0.05; 
     let opacidadeFade = 0;
-    let textoCompletoMensagem = "Parabéns, Comandante Mauro, pela gloriosa vitória sobre as forças do Coronavírus e do Dengozão! O quadrante está seguro graças a você. Agora, junte-se a nós na Sala de Comando... Vamos decidir a próxima estratégia de defesa!";
+    let textoCompletoMensagem = "Parabéns, Comandante Mauro, pela gloriosa vitória sobre as forças do Coronavírus e do Dengozão! O quadrante está seguro graças a você. Agora, junte-se a nós na Sala de Comando... Vamos decidir as próximas estratégias!";
     let caracteresVisiveisTexto = 0;
     let tempoUltimoCaractereMina = 0;
+
+    // Variáveis da decolagem e encolhimento para Orion
+    let naveDecolagem = { x: 0, y: 0, largura: 150, altura: 150, escala: 1.5 };
+    let tempoPontinhoEstelar = 0;
 
     const x_jogador = { 
         x: 0, y: 0, largura: 55, altura: 55, velocidad: 7,
@@ -184,9 +188,10 @@
         btnBaixo: { x: 65, y: 0, l: 50, a: 50 },
         btnAtirar: { x: 0, y: 0, raio: 40 },
         btnIniciar: { x: 0, y: 0, l: 180, a: 50 },
-        // Botões Dinâmicos da Sala de Controle Final
-        btnRota1: { x: 0, y: 0, l: 140, a: 45 },
-        btnRota2: { x: 0, y: 0, l: 140, a: 45 }
+        // Botão de Missão na Sala de Comando
+        btnOrion: { x: 0, y: 0, l: 200, a: 50 },
+        // Botão para disparar o próximo arquivo/sequência
+        btnIniciarOrion: { x: 0, y: 0, l: 160, a: 50 }
     };
 
     function configurarPainel() {
@@ -201,11 +206,13 @@
         painel.btnIniciar.x = canvas.width / 2 - painel.btnIniciar.l / 2;
         painel.btnIniciar.y = canvas.height / 2 + 60;
 
-        // Posicionamento estratégico dos botões de rotas na sala de comando (na parte inferior)
-        painel.btnRota1.x = canvas.width / 2 - 150;
-        painel.btnRota1.y = canvas.height - 80;
-        painel.btnRota2.x = canvas.width / 2 + 10;
-        painel.btnRota2.y = canvas.height - 80;
+        // Posicionamento centralizado do Botão Orion na Sala de Controle
+        painel.btnOrion.x = canvas.width / 2 - painel.btnOrion.l / 2;
+        painel.btnOrion.y = canvas.height - 110;
+
+        // Posicionamento do Botão Iniciar no Painel Informativo da Batalha de Orion
+        painel.btnIniciarOrion.x = canvas.width / 2 - painel.btnIniciarOrion.l / 2;
+        painel.btnIniciarOrion.y = canvas.height / 2 + 60;
 
         estrelasFundo.forEach(est => est.x = Math.random() * canvas.width);
 
@@ -242,7 +249,6 @@
         x_jogador.x = canvas.width / 2 - x_jogador.largura / 2;
         x_jogador.y = painel.y - x_jogador.altura - 30;
         
-        // Inicializações da Cinemática
         subEstadoCinematica = "PILOTO_AUTOMATICO";
         escalaBaseEspacial = 0.05;
         opacidadeFade = 0;
@@ -260,7 +266,7 @@
         for (let i = 0; i < 6; i++) {
             buracosNegros.push({
                 x: Math.random() * (canvas.width - 90) + 45,
-                y: -200 - (i * 650), raioBoca: 25, raioAtracao: 95, velocidadeCair: 2.5
+                y: -200 - (i * 650), raioBoca: 25, raioAtracao: 95, velocidadCair: 2.5
             });
         }
     }
@@ -277,12 +283,10 @@
         asteroides.length = 0; countAsteroidesProcessados = 0; ultimoAsteroideCriado = performance.now();
     }
 
-    // DISPARADOR DA CINEMÁTICA DA ESTAÇÃO ESPACIAL E POUSO
     function iniciarSequenciaEstacaoEspacial(ts) {
         estadoJogo = "CINEMATICA_FINAL";
         subEstadoCinematica = "PILOTO_AUTOMATICO";
         tempoInicioCinematica = ts;
-        // Reseta direções e limpa projéteis soltos
         x_jogador.movendoEsquerda = false; x_jogador.movendoDireita = false;
         x_jogador.movendoCima = false; x_jogador.movendoBaixo = false;
         tiros.length = 0; bolasMalditas.length = 0; asteroides.length = 0;
@@ -310,10 +314,15 @@
         if (estadoJogo === "START" && (e.key === " " || e.key === "Enter")) { reiniciarJogo(); return; }
         if (estadoJogo === "GAMEOVER" && (e.key === " " || e.key === "Enter")) { estadoJogo = "START"; return; }
         
-        // No painel de decisão final, botões numéricos alternativos
+        // Atalho de teclado na Sala de Controle Final
         if (estadoJogo === "CINEMATICA_FINAL" && subEstadoCinematica === "SALA_CONTROLE") {
-            if (e.key === "1") { estadoJogo = "START"; }
-            if (e.key === "2") { alert("A v1.5 está chegando! Próximas missões em desenvolvimento."); }
+            if (e.key === "1" && caracteresVisiveisTexto >= textoCompletoMensagem.length) { 
+                // Inicia animação de decolagem para Orion
+                subEstadoCinematica = "DECOLAGEM_ORION";
+                naveDecolagem.x = canvas.width / 2 - 75;
+                naveDecolagem.y = canvas.height - 200;
+                naveDecolagem.escala = 1.5;
+            }
             return;
         }
 
@@ -362,15 +371,29 @@
         }
         if (estadoJogo === "GAMEOVER") { estadoJogo = "START"; return; }
 
-        // Toques Dinâmicos na Sala de Controle Final (Escolha de Rotas)
-        if (estadoJogo === "CINEMATICA_FINAL" && subEstadoCinematica === "SALA_CONTROLE") {
-            if (tx >= painel.btnRota1.x && tx <= painel.btnRota1.x + painel.btnRota1.l && ty >= painel.btnRota1.y && ty <= painel.btnRota1.y + painel.btnRota1.a) {
-                estadoJogo = "START";
+        // 🔘 INTERAÇÕES DE TOQUE NA CINEMÁTICA FINAL
+        if (estadoJogo === "CINEMATICA_FINAL") {
+            // Clique no botão de escolher missão Orion
+            if (subEstadoCinematica === "SALA_CONTROLE" && caracteresVisiveisTexto >= textoCompletoMensagem.length) {
+                if (tx >= painel.btnOrion.x && tx <= painel.btnOrion.x + painel.btnOrion.l && ty >= painel.btnOrion.y && ty <= painel.btnOrion.y + painel.btnOrion.a) {
+                    subEstadoCinematica = "DECOLAGEM_ORION";
+                    // Define a nave centralizada e grandona para a nova partida
+                    naveDecolagem.x = canvas.width / 2 - 75;
+                    naveDecolagem.y = canvas.height - 200;
+                    naveDecolagem.escala = 1.5;
+                }
+                return;
             }
-            if (tx >= painel.btnRota2.x && tx <= painel.btnRota2.x + painel.btnRota2.l && ty >= painel.btnRota2.y && ty <= painel.btnRota2.y + painel.btnRota2.a) {
-                alert("A v1.5 está chegando! Próximas missões em desenvolvimento.");
+            
+            // Clique no botão INICIAR do Painel Informativo de Orion (Próxima Sequência de Código)
+            if (subEstadoCinematica === "PAINEL_ORION") {
+                if (tx >= painel.btnIniciarOrion.x && tx <= painel.btnIniciarOrion.x + painel.btnIniciarOrion.l && ty >= painel.btnIniciarOrion.y && ty <= painel.btnIniciarOrion.y + painel.btnIniciarOrion.a) {
+                    // 🔀 JUMPER DE ARQUIVO: Aqui você chama o seu próximo arquivo/módulo JavaScript!
+                    alert("Carregando Sequência de Código do Próximo Arquivo: Operação Orion...");
+                    reiniciarJogo(); // Reseta temporariamente para fins de loop estrutural
+                }
+                return;
             }
-            return;
         }
 
         if (x_jogador.emSucao) return;
@@ -396,40 +419,35 @@
 
     // --- MÁQUINA DE LÓGICA E PROCESSAMENTO DE TRILHAS ---
     function atualizar(ts) {
-        // MÁQUINA DE JUMPERS: PROCESSAMENTO DA CINEMÁTICA DA ESTAÇÃO ESPACIAL
+        // --- PROCESSAMENTO DA CINEMÁTICA ---
         if (estadoJogo === "CINEMATICA_FINAL") {
-            // Animação de estrelas em segundo plano se mantém viva discretamente
             estrelasFundo.forEach(est => {
-                est.y += est.vel * 0.3;
+                est.y += est.vel * (subEstadoCinematica === "DECOLAGEM_ORION" ? 4 : 0.3); // Acelera fundo na decolagem
                 if(est.y > canvas.height) { est.y = -10; est.x = Math.random() * canvas.width; }
             });
 
             if (subEstadoCinematica === "PILOTO_AUTOMATICO") {
-                // Alinha a nave perfeitamente no centro horizontal e faz ela acelerar suavemente para o horizonte do teto
                 let centroAlinhadoX = canvas.width / 2 - x_jogador.largura / 2;
                 x_jogador.x += (centroAlinhadoX - x_jogador.x) * 0.05;
-                x_jogador.y -= 2.2; // Nave avança em direção ao infinito
+                x_jogador.y -= 2.2; 
 
-                // Quando a nave some no teto, ativa a visão do cockpit e inicia a aproximação lenta da base
                 if (x_jogador.y + x_jogador.altura < 0) {
                     subEstadoCinematica = "VISAO_COCKPIT";
-                    escalaBaseEspacial = 0.05; // Base começa bem pequenininha ao longe
+                    escalaBaseEspacial = 0.05; 
                     tempoInicioCinematica = ts;
                 }
             } 
             else if (subEstadoCinematica === "VISAO_COCKPIT") {
-                // APRECIÇÃO GRADUAL (DEGUSTAÇÃO): Escala cresce lentamente a uma taxa fixa controlada
                 if (escalaBaseEspacial < 1.0) {
-                    escalaBaseEspacial += 0.0025; // Taxa de cruzeiro lenta para o jogador contemplar a estação espacial
+                    escalaBaseEspacial += 0.0025; 
                 } else {
-                    // Acoplamento perfeito! Inicia transição suave de blackout (Fade Out)
                     subEstadoCinematica = "FADE_OUT";
                     tempoInicioCinematica = ts;
                     opacidadeFade = 0;
                 }
             } 
             else if (subEstadoCinematica === "FADE_OUT") {
-                opacidadeFade += 0.02; // Escurecendo a tela gradativamente
+                opacidadeFade += 0.02; 
                 if (opacidadeFade >= 1.0) {
                     opacidadeFade = 1.0;
                     subEstadoCinematica = "FADE_IN";
@@ -439,14 +457,13 @@
                 }
             } 
             else if (subEstadoCinematica === "FADE_IN") {
-                opacidadeFade -= 0.02; // Clareando a tela na sala de controle
+                opacidadeFade -= 0.02; 
                 if (opacidadeFade <= 0) {
                     opacidadeFade = 0;
                     subEstadoCinematica = "SALA_CONTROLE";
                 }
             } 
             else if (subEstadoCinematica === "SALA_CONTROLE") {
-                // LÓGICA MÁQUINA DE ESCREVER: adiciona um caractere a cada 45ms se necessário
                 if (caracteresVisiveisTexto < textoCompletoMensagem.length) {
                     if (ts - tempoUltimoCaractereMina > 45) {
                         caracteresVisiveisTexto++;
@@ -454,7 +471,32 @@
                     }
                 }
             }
-            return; // Bloqueia atualizações do jogo comum durante a cinemática
+            // 🚀 JUMPER: ANIMAÇÃO DE DECOLAGEM PARA ORION (ENCOLHIMENTO ATÉ VIRAR PONTINHO)
+            else if (subEstadoCinematica === "DECOLAGEM_ORION") {
+                naveDecolagem.y -= 4.5; // Segue viagem subindo na tela
+                
+                // Encolhendo progressivamente
+                if (naveDecolagem.escala > 0.05) {
+                    naveDecolagem.escala -= 0.012; 
+                    naveDecolagem.largura = 100 * naveDecolagem.escala;
+                    naveDecolagem.altura = 100 * naveDecolagem.escala;
+                } else {
+                    // Virou um pontinho Estelar fixo
+                    naveDecolagem.largura = 3;
+                    naveDecolagem.altura = 3;
+                    
+                    if (tempoPontinhoEstelar === 0) {
+                        tempoPontinhoEstelar = ts; // Guarda o momento exato em que virou o pontinho
+                    }
+                    
+                    // Fraçãozinha de segundo (300 milissegundos) antes de abrir o painel
+                    if (ts - tempoPontinhoEstelar > 300) {
+                        subEstadoCinematica = "PAINEL_ORION";
+                        tempoPontinhoEstelar = 0;
+                    }
+                }
+            }
+            return; 
         }
 
         if (!x_jogador.emSucao) {
@@ -692,7 +734,6 @@
                 }
             }
 
-            // ⚡ JUMPER CRUCIAL DETECTADO: Quando a meta de asteroides acaba, aciona o Piloto Automático da Base em vez de tela de vitória antiga!
             if (countAsteroidesProcessados >= META_FIM_ASTEROIDES && asteroides.length === 0) {
                 iniciarSequenciaEstacaoEspacial(ts);
             }
@@ -920,7 +961,6 @@
         if (estadoJogo === "CINEMATICA_FINAL") {
             
             if (subEstadoCinematica === "VISAO_COCKPIT") {
-                // 1. Desenha a Base vindo ao longe no vidro transparente através da Escala Controlada
                 if (imgBaseEspacial.complete && imgBaseEspacial.width > 0) {
                     ctx.save();
                     ctx.translate(canvas.width / 2, canvas.height / 2 - 50);
@@ -928,32 +968,27 @@
                     ctx.drawImage(imgBaseEspacial, -imgBaseEspacial.width / 2, -imgBaseEspacial.height / 2);
                     ctx.restore();
                 } else {
-                    // Backup estrutural geométrico caso a imagem falhe
                     ctx.fillStyle = "#334466";
                     ctx.beginPath();
                     ctx.arc(canvas.width / 2, canvas.height / 2 - 50, escalaBaseEspacial * 120, 0, Math.PI * 2);
                     ctx.fill();
                 }
 
-                // 2. Sobrepõe o Cockpit fixo na tela com as janelas de vidro transparente por cima da base
                 if (imgCockpit.complete && imgCockpit.width > 0) {
                     ctx.drawImage(imgCockpit, 0, 0, canvas.width, canvas.height);
                 } else {
-                    // Indicador estético reserva em texto
                     ctx.fillStyle = "rgba(0, 210, 255, 0.15)";
                     ctx.fillRect(0, canvas.height - 220, canvas.width, 220);
                     ctx.fillStyle = "#00d2ff"; ctx.font = "12px sans-serif"; ctx.textAlign = "center";
                     ctx.fillText("[ SISTEMA DE COCKPIT ATIVO ]", canvas.width / 2, canvas.height - 50);
                 }
 
-                // Legenda discreta de Piloto Automático ativado
                 ctx.fillStyle = "#00ffcc"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
                 ctx.fillText("🛰️ PILOTO AUTOMÁTICO: APROXIMAÇÃO DA DOCA ESTAÇÃO ESPACIAL", canvas.width / 2, 40);
             }
 
             // Interface Gráfica da Sala de Controle (Vitória Real)
-            if (subEstadoCinematica === "SALA_CONTROLE" || subEstadoCinematica === "FADE_IN" || subEstadoCinematica === "FADE_OUT") {
-                // Desenha o interior maravilhoso da sala
+            if (subEstadoCinematica === "SALA_CONTROLE" || subEstadoCinematica === "FADE_IN" || subEstadoCinematica === "FADE_OUT" || subEstadoCinematica === "DECOLAGEM_ORION") {
                 if (imgSalaControle.complete && imgSalaControle.width > 0) {
                     ctx.drawImage(imgSalaControle, 0, 0, canvas.width, canvas.height);
                 } else {
@@ -961,33 +996,61 @@
                     ctx.fillStyle = "rgba(0, 255, 200, 0.05)"; ctx.fillRect(30, 100, canvas.width - 60, canvas.height - 200);
                 }
 
-                // RENDERIZADOR DA MÁQUINA DE ESCREVER NO TETO (PRESERVANDO O GLAMOUR DA SALA)
-                ctx.fillStyle = "rgba(0, 5, 20, 0.82)"; // Fundo transparente escuro cirúrgico no teto
+                // 🛰️ MENSAGEM DO PAINEL LOCAL (FIXADO NO TOPO CONFORME COMBINADO)
+                ctx.fillStyle = "rgba(0, 5, 20, 0.85)"; 
                 ctx.fillRect(0, 0, canvas.width, 160);
                 ctx.strokeStyle = "#00ffcc"; ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.moveTo(0, 160); ctx.lineTo(canvas.width, 160); ctx.stroke();
 
-                // Desenha a string segmentada letra por letra
                 let textoParaExibir = textoCompletoMensagem.substring(0, caracteresVisiveisTexto);
                 ctx.fillStyle = "#00ffcc"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
-                
-                // Quebra automática de linhas do efeito de digitação no teto
                 escreverTextoBlocoQuebrado(ctx, textoParaExibir, canvas.width / 2, 30, canvas.width - 40, 19);
 
-                // Exibe os botões interativos de decisão de rotas somente quando o texto termina de digitar
-                if (caracteresVisiveisTexto >= textoCompletoMensagem.length) {
-                    // Botão 1: Reiniciar Missão Principal
-                    ctx.fillStyle = "#00ffff";
-                    ctx.fillRect(painel.btnRota1.x, painel.btnRota1.y, painel.btnRota1.l, painel.btnRota1.a);
-                    ctx.fillStyle = "#000"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-                    ctx.fillText("REPETIR OPERAÇÃO", painel.btnRota1.x + painel.btnRota1.l / 2, painel.btnRota1.y + painel.btnRota1.a / 2);
-
-                    // Botão 2: Próxima Defesa (Futura expansão)
+                // Exibe o Botão de Orion somente quando o texto termina e não iniciou a decolagem
+                if (caracteresVisiveisTexto >= textoCompletoMensagem.length && subEstadoCinematica === "SALA_CONTROLE") {
                     ctx.fillStyle = "#ffaa00";
-                    ctx.fillRect(painel.btnRota2.x, painel.btnRota2.y, painel.btnRota2.l, painel.btnRota2.a);
-                    ctx.fillStyle = "#000"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
-                    ctx.fillText("PRÓXIMA ROTA (V1.5)", painel.btnRota2.x + painel.btnRota2.l / 2, painel.btnRota2.y + painel.btnRota2.a / 2);
+                    ctx.fillRect(painel.btnOrion.x, painel.btnOrion.y, painel.btnOrion.l, painel.btnOrion.a);
+                    
+                    ctx.fillStyle = "#000"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillText("MISSÃO ORION 🛸", painel.btnOrion.x + painel.btnOrion.l / 2, painel.btnOrion.y + painel.btnOrion.a / 2);
                 }
+            }
+
+            // 🚀 JUMPER: RENDERIZAÇÃO DA NAVE DECOLANDO E FICANDO PEQUENININHA ATÉ SUMIR
+            if (subEstadoCinematica === "DECOLAGEM_ORION") {
+                ctx.save();
+                ctx.translate(naveDecolagem.x + naveDecolagem.largura / 2, naveDecolagem.y + naveDecolagem.altura / 2);
+                
+                if (imgNave.complete && imgNave.width > 0) {
+                    ctx.drawImage(imgNave, -naveDecolagem.largura / 2, -naveDecolagem.altura / 2, naveDecolagem.largura, naveDecolagem.altura);
+                } else {
+                    ctx.fillStyle = "#00d2ff";
+                    ctx.fillRect(-naveDecolagem.largura / 2, -naveDecolagem.altura / 2, naveDecolagem.largura, naveDecolagem.altura);
+                }
+                ctx.restore();
+            }
+
+            // 🪐 JUMPER: NOVO PAINEL DE INFORMAÇÕES DE ORION (PIRATAS DO ESPAÇO)
+            if (subEstadoCinematica === "PAINEL_ORION") {
+                ctx.fillStyle = "#050510"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Cabeçalho da Missão no Topo
+                ctx.fillStyle = "rgba(255, 0, 50, 0.15)"; ctx.fillRect(0, 0, canvas.width, 100);
+                ctx.strokeStyle = "#ff0044"; ctx.strokeRect(0, 0, canvas.width, 100);
+                
+                ctx.fillStyle = "#ff0044"; ctx.font = "bold 18px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText("ALERTA DE COMBATE: SISTEMA ORION", canvas.width / 2, 55);
+
+                // Frase do Alerta de Missão pedida por você
+                ctx.fillStyle = "#ffffff"; ctx.font = "bold 15px sans-serif";
+                let textoOrion = "Combater os piratas do espaço e defender os diamantes da Via Láctea!";
+                escreverTextoBlocoQuebrado(ctx, textoOrion, canvas.width / 2, canvas.height / 2 - 40, canvas.width - 60, 24);
+
+                // Botão de Iniciar a nova sequência de código
+                ctx.fillStyle = "#00ffcc";
+                ctx.fillRect(painel.btnIniciarOrion.x, painel.btnIniciarOrion.y, painel.btnIniciarOrion.l, painel.btnIniciarOrion.a);
+                ctx.fillStyle = "#000"; ctx.font = "bold 16px sans-serif"; ctx.textBaseline = "middle";
+                ctx.fillText("INICIAR", canvas.width / 2, painel.btnIniciarOrion.y + 25);
             }
 
             // Camada de Efeito Blackout / Transição Suave (Fade)
@@ -1057,7 +1120,7 @@
     }
 
     // SUPORTE AUXILIAR: Divisor inteligente de strings para caixas de texto com quebras lineares
-    function escribirTextoBlocoQuebrado(contexto, texto, x, y, larguraMaxima, espacamentoLinha) {
+    function escreverTextoBlocoQuebrado(contexto, texto, x, y, larguraMaxima, espacamentoLinha) {
         let palavras = texto.split(' ');
         let linha = '';
         let posY = y;
