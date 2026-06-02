@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Star Fighter - Ferratech Jogos Campanha Social</title>
     
-    <!-- 📡 ANTENA INTEGRADA DO GOOGLE ANALYTICS -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-WHGRWM2R8F"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -104,7 +103,6 @@
         totalPartidasGerais++;
         localStorage.setItem("ferratech_partidas_locais", totalPartidasGerais);
         
-        // Dispara o evento em tempo real para o seu painel do Google Analytics
         if (typeof gtag === 'function') {
             gtag('event', 'partida_iniciada', {
                 'event_category': 'Engajamento',
@@ -127,6 +125,16 @@
     let tremorCena = 0; 
     let anguloRotacaoGeral = 0; 
 
+    // Variáveis para a Sala de Comando e Seleção de Arquivos Externos
+    let missaoSelecionada = ""; 
+    let opacidadePainel = 0;
+    const botoesMissao = {
+        orion: { x: 0, y: 0, l: 180, a: 45, texto: "MISSÃO ORION" },
+        alfa: { x: 0, y: 0, l: 180, a: 45, texto: "ALFA CENTAURI" },
+        pegasus: { x: 0, y: 0, l: 180, a: 45, texto: "MISSÃO PÉGASO" },
+        start: { x: 0, y: 0, l: 200, a: 50, texto: "INICIAR CONFRONTO" }
+    };
+
     const x_jogador = { 
         x: 0, y: 0, largura: 55, altura: 55, velocidad: 7,
         movendoEsquerda: false, movendoDireita: false, movendoCima: false, movendoBaixo: false,
@@ -146,7 +154,7 @@
     // Lista de Gerenciamento da Fase 4
     const asteroides = [];
     let ultimoAsteroideCriado = 0;
-    const META_FIM_ASTEROIDES = 25; // Número de asteroides destruídos/passados para fechar o jogo
+    const META_FIM_ASTEROIDES = 25; 
     let countAsteroidesProcessados = 0;
 
     let ultimoInimigoCriado = 0;
@@ -186,6 +194,22 @@
         painel.btnIniciar.x = canvas.width / 2 - painel.btnIniciar.l / 2;
         painel.btnIniciar.y = canvas.height / 2 + 60;
 
+        // Posicionamento responsivo dos botões da Sala de Comando
+        let centroX = canvas.width / 2;
+        let centroY = canvas.height / 2;
+        
+        botoesMissao.orion.x = centroX - botoesMissao.orion.l / 2;
+        botoesMissao.orion.y = centroY - 30;
+
+        botoesMissao.alfa.x = centroX - botoesMissao.alfa.l / 2;
+        botoesMissao.alfa.y = centroY + 25;
+
+        botoesMissao.pegasus.x = centroX - botoesMissao.pegasus.l / 2;
+        botoesMissao.pegasus.y = centroY + 80;
+
+        botoesMissao.start.x = centroX - botoesMissao.start.l / 2;
+        botoesMissao.start.y = centroY + 160;
+
         estrelasFundo.forEach(est => est.x = Math.random() * canvas.width);
 
         if (x_jogador.x === 0 || x_jogador.y === 0) {
@@ -207,7 +231,7 @@
     }
 
     function reiniciarJogo() {
-        registrarNovaPartida(); // Soma placar e avisa o Analytics!
+        registrarNovaPartida(); 
 
         pontuacao = 0; abates = 0; faseAtual = 1; countAsteroidesProcessados = 0;
         bossAtivo = false; bossMorrendo = false; tremorCena = 0;
@@ -232,7 +256,7 @@
         for (let i = 0; i < 6; i++) {
             buracosNegros.push({
                 x: Math.random() * (canvas.width - 90) + 45,
-                y: -200 - (i * 650), raioBoca: 25, raioAtracao: 95, velocidadeCair: 2.5
+                y: -200 - (i * 650), raioBoca: 25, raioAtracao: 95, velocidadCair: 2.5
             });
         }
     }
@@ -315,6 +339,24 @@
         }
         if (estadoJogo === "GAMEOVER" || estadoJogo === "VITORIA") { estadoJogo = "START"; return; }
 
+        // Intercepta toques na Sala de Comando interativa da ASH
+        if (estadoJogo === "SALA_COMANDO") {
+            if (tx >= botoesMissao.orion.x && tx <= botoesMissao.orion.x + botoesMissao.orion.l && ty >= botoesMissao.orion.y && ty <= botoesMissao.orion.y + botoesMissao.orion.a) {
+                missaoSelecionada = "orion";
+            }
+            if (tx >= botoesMissao.alfa.x && tx <= botoesMissao.alfa.x + botoesMissao.alfa.l && ty >= botoesMissao.alfa.y && ty <= botoesMissao.alfa.y + botoesMissao.alfa.a) {
+                missaoSelecionada = "alfa";
+            }
+            if (tx >= botoesMissao.pegasus.x && tx <= botoesMissao.pegasus.x + botoesMissao.pegasus.l && ty >= botoesMissao.pegasus.y && ty <= botoesMissao.pegasus.y + botoesMissao.pegasus.a) {
+                missaoSelecionada = "pegasus";
+            }
+
+            if (missaoSelecionada !== "" && tx >= botoesMissao.start.x && tx <= botoesMissao.start.x + botoesMissao.start.l && ty >= botoesMissao.start.y && ty <= botoesMissao.start.y + botoesMissao.start.a) {
+                acionarScriptExterno(missaoSelecionada);
+            }
+            return;
+        }
+
         if (x_jogador.emSucao) return;
         let d = Math.sqrt(Math.pow(tx - painel.btnAtirar.x, 2) + Math.pow(ty - painel.btnAtirar.y, 2));
         if (d <= painel.btnAtirar.raio) atirar();
@@ -338,7 +380,7 @@
 
     // --- MÁQUINA DE LÓGICA ---
     function atualizar(ts) {
-        if (!x_jogador.emSucao) {
+        if (!x_jogador.emSucao && estadoJogo !== "ANIMACAO_POUSO") {
             estrelasFundo.forEach(est => {
                 est.y += est.vel;
                 if(est.y > canvas.height) { est.y = -10; est.x = Math.random() * canvas.width; }
@@ -351,12 +393,38 @@
 
         anguloRotacaoGeral += 0.05;
 
-        // Gerenciamento de transições de fase
+        // Gerenciamento de transições normais de fase
         if (estadoJogo === "TRANSICAO") {
             if (faseAtual === 1 && ts - tempoTransicao > 3500) { iniciarFase2(); } 
             else if (faseAtual === 2 && ts - tempoTransicao > 3500) { iniciarFase3(); }
             else if (faseAtual === 3 && ts - tempoTransicao > 3500) { iniciarFase4(); }
             return;
+        }
+
+        // --- Lógica de Animação de Alçar Voo / Pouso ---
+        if (estadoJogo === "ANIMACAO_POUSO") {
+            x_jogador.y -= 6; 
+            x_jogador.escala -= 0.015;
+            
+            cenario.velocidade = 12; // Efeito de hiper-velocidade
+            cenario.y1 += cenario.velocidade; cenario.y2 += cenario.velocidade;
+            if (cenario.y1 >= canvas.height) cenario.y1 = -canvas.height;
+            if (cenario.y2 >= canvas.height) cenario.y2 = -canvas.height;
+
+            if (x_jogador.escala <= 0) x_jogador.escala = 0;
+
+            if (ts - tempoTransicao > 3500) {
+                estadoJogo = "SALA_COMANDO";
+                missaoSelecionada = "";
+                opacidadePainel = 0;
+            }
+            return;
+        }
+
+        // --- Estado da Sala de Comando da ANG ---
+        if (estadoJogo === "SALA_COMANDO") {
+            if (opacidadePainel < 1) opacidadePainel += 0.02;
+            return; 
         }
 
         if (estadoJogo !== "JOGANDO") { tremorCena = 0; return; }
@@ -402,7 +470,7 @@
                 continue;
             }
 
-            // NOVO: Dano estruturado nos Asteroides (Fase 4)
+            // Dano estruturado nos Asteroides (Fase 4)
             if (faseAtual === 4) {
                 let tiroDestruido = false;
                 for (let aIdx = asteroides.length - 1; aIdx >= 0; aIdx--) {
@@ -449,7 +517,7 @@
             }
         }
 
-        // NOVO: Gerador Inteligente de Asteroides para a Fase 4
+        // Gerador de Asteroides para a Fase 4
         if (faseAtual === 4 && ts - ultimoAsteroideCriado > 1100 && countAsteroidesProcessados < META_FIM_ASTEROIDES) {
             let dadosSorteio = Math.random();
             let nomeTipo = "asteroide_1";
@@ -529,7 +597,7 @@
                 if (Math.random() < 0.30) { instanciarExplosao(dengosao.x + Math.random()*dengosao.largura, dengosao.y + Math.random()*dengosao.altura, 35, 35); }
                 if (ts - dengosao.tempoMorte > 3500) { 
                     dengosao.morrendo = false; 
-                    estadoJogo = "TRANSICAO"; // MODIFICADO: Em vez de vencer o jogo, vai para a Transição da Fase 4!
+                    estadoJogo = "TRANSICAO"; 
                     tempoTransicao = ts;
                 }
                 return;
@@ -552,32 +620,32 @@
             }
         }
 
-        // NOVO: Atualizador Mecânico dos Asteroides (Fase 4)
+        // Atualizador Mecânico dos Asteroides (Fase 4)
         if (faseAtual === 4) {
             for (let i = asteroides.length - 1; i >= 0; i--) {
                 let ast = asteroides[i];
                 ast.y += ast.velY;
                 ast.angulo += ast.velRotacao;
 
-                // Colisão fatal com a nave do jogador
                 if (verificarColisao(ast, x_jogador)) {
                     instanciarExplosao(ast.x, ast.y, ast.largura, ast.altura);
                     asteroides.splice(i, 1);
-                    x_jogador.vida = 0; // Colisão de impacto direto causa explosão fatal!
+                    x_jogador.vida = 0; 
                     estadoJogo = "GAMEOVER";
                     continue;
                 }
 
-                // Passou do painel seguro
                 if (ast.y > painel.y) {
                     asteroides.splice(i, 1);
                     countAsteroidesProcessados++;
                 }
             }
 
-            // Condição de vitória real ao limpar o cinturão de asteroides!
+            // GATILHO: Dispara a nova transição cinemática para a base ASH ao limpar o cinturão!
             if (countAsteroidesProcessados >= META_FIM_ASTEROIDES && asteroides.length === 0) {
-                estadoJogo = "VITORIA";
+                estadoJogo = "ANIMACAO_POUSO";
+                tempoTransicao = ts;
+                x_jogador.escala = 1; 
             }
         }
 
@@ -694,11 +762,10 @@
             }
         });
 
-        // NOVO: Renderizar e Rotacionar de forma limpa os Asteroides da Fase 4
+        // Renderizar e Rotacionar Asteroides da Fase 4
         if (faseAtual === 4) {
             asteroides.forEach(ast => {
                 ctx.save();
-                // Move a origem do canvas para o centro do asteroide para rotacionar no próprio eixo
                 ctx.translate(ast.x + ast.largura / 2, ast.y + ast.altura / 2);
                 ctx.rotate(ast.angulo);
 
@@ -709,14 +776,12 @@
                 } else if (ast.tipo === "asteroide_3" && imgAsteroide3.complete && imgAsteroide3.width > 0) {
                     ctx.drawImage(imgAsteroide3, -ast.largura / 2, -ast.altura / 2, ast.largura, ast.altura);
                 } else {
-                    // Caixa reserva texturizada caso as imagens falhem no carregamento inicial
                     ctx.fillStyle = ast.tipo === "asteroide_3" ? "#52433d" : (ast.tipo === "asteroide_2" ? "#736057" : "#9c857a");
                     ctx.fillRect(-ast.largura / 2, -ast.altura / 2, ast.largura, ast.altura);
                     ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.strokeRect(-ast.largura / 2, -ast.altura / 2, ast.largura, ast.altura);
                 }
                 ctx.restore();
 
-                // Pequena barra de vida discreta para os asteroides médios e grandes resilientes
                 if (ast.tipo !== "asteroide_1") {
                     let maxV = ast.tipo === "asteroide_3" ? 10 : 5;
                     ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(ast.x, ast.y - 7, ast.largura, 4);
@@ -760,7 +825,7 @@
             else { ctx.fillStyle = "#ff4500"; ctx.fillRect(fr.x, fr.y, fr.largura, fr.altura); }
         });
 
-        if (estadoJogo === "JOGANDO" || x_jogador.emSucao) {
+        if (estadoJogo === "JOGANDO" || x_jogador.emSucao || estadoJogo === "ANIMACAO_POUSO") {
             ctx.save(); let cX = x_jogador.x + x_jogador.largura / 2; let cY = x_jogador.y + x_jogador.altura / 2;
             ctx.translate(cX, cY); ctx.scale(x_jogador.escala, x_jogador.escala); ctx.rotate(x_jogador.anguloMorte); 
             
@@ -792,7 +857,7 @@
         if (faseAtual === 4) subTextoFase = "Fase 4: Campo de Asteroides ☄️";
         ctx.fillText(subTextoFase, 25, 68);
 
-        // Controles Touch
+        // Controles Touch de Jogabilidade
         if (estadoJogo === "JOGANDO") {
             ctx.fillStyle = "rgba(255, 255, 255, 0.22)"; ctx.font = "24px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText("▲", painel.btnCima.x + 25, painel.btnCima.y + 25);
@@ -823,13 +888,63 @@
                 ctx.fillStyle = "#ff2244"; ctx.font = "bold 17px sans-serif";
                 ctx.fillText("CHEFE FINAL: O DENGOSÃO EMERGIU!", canvas.width / 2, canvas.height / 2 + 45);
             } else if (faseAtual === 3) {
-                // Mensagem de Transição para a sua nova Fase 4!
                 ctx.fillText("O DENGOSÃO FOI ANIQUILADO!", canvas.width / 2, canvas.height / 2 - 40);
                 ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif";
                 ctx.fillText("FASE 4: Dobra Espacial Descontrolada!", canvas.width / 2, canvas.height / 2 + 10);
                 ctx.fillStyle = "#ffcc00"; ctx.font = "bold 17px sans-serif";
                 ctx.fillText("PERIGO: CINTURÃO DE ASTEROIDES!", canvas.width / 2, canvas.height / 2 + 45);
             }
+        }
+
+        // ========================================================
+        // 🚀 NOVA INTERFACE: SALA DE COMANDO INTERATIVA DA ASH
+        // ========================================================
+        if (estadoJogo === "SALA_COMANDO") {
+            ctx.fillStyle = "rgba(4, 8, 20, 0.98)"; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.globalAlpha = opacidadePainel;
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#00ffcc"; ctx.font = "bold 20px sans-serif";
+            ctx.fillText("SALA DE COMANDO ASH", canvas.width / 2, canvas.height / 2 - 160);
+            
+            ctx.fillStyle = "#ffffff"; ctx.font = "13px sans-serif";
+            ctx.fillText("Bem-vindo de volta, Comandante Mauro!", canvas.width / 2, canvas.height / 2 - 130);
+            ctx.fillStyle = "#8899a6";
+            ctx.fillText("Missão cumprida. Selecione a próxima frente:", canvas.width / 2, canvas.height / 2 - 110);
+
+            // Botão: Missão Orion
+            ctx.fillStyle = missaoSelecionada === "orion" ? "#00ffcc" : "rgba(0, 210, 255, 0.15)";
+            ctx.fillRect(botoesMissao.orion.x, botoesMissao.orion.y, botoesMissao.orion.l, botoesMissao.orion.a);
+            ctx.strokeStyle = "#00d2ff"; ctx.strokeRect(botoesMissao.orion.x, botoesMissao.orion.y, botoesMissao.orion.l, botoesMissao.orion.a);
+            ctx.fillStyle = missaoSelecionada === "orion" ? "#000" : "#fff"; ctx.font = "bold 13px sans-serif"; ctx.textBaseline = "middle";
+            ctx.fillText(botoesMissao.orion.texto, canvas.width / 2, botoesMissao.orion.y + 22);
+
+            // Botão: Alfa Centauri
+            ctx.fillStyle = missaoSelecionada === "alfa" ? "#00ffcc" : "rgba(0, 210, 255, 0.15)";
+            ctx.fillRect(botoesMissao.alfa.x, botoesMissao.alfa.y, botoesMissao.alfa.l, botoesMissao.alfa.a);
+            ctx.strokeStyle = "#00d2ff"; ctx.strokeRect(botoesMissao.alfa.x, botoesMissao.alfa.y, botoesMissao.alfa.l, botoesMissao.alfa.a);
+            ctx.fillStyle = missaoSelecionada === "alfa" ? "#000" : "#fff";
+            ctx.fillText(botoesMissao.alfa.texto, canvas.width / 2, botoesMissao.alfa.y + 22);
+
+            // Botão: Missão Pégaso
+            ctx.fillStyle = missaoSelecionada === "pegasus" ? "#00ffcc" : "rgba(0, 210, 255, 0.15)";
+            ctx.fillRect(botoesMissao.pegasus.x, botoesMissao.pegasus.y, botoesMissao.pegasus.l, botoesMissao.pegasus.a);
+            ctx.strokeStyle = "#00d2ff"; ctx.strokeRect(botoesMissao.pegasus.x, botoesMissao.pegasus.y, botoesMissao.pegasus.l, botoesMissao.pegasus.a);
+            ctx.fillStyle = missaoSelecionada === "pegasus" ? "#000" : "#fff";
+            ctx.fillText(botoesMissao.pegasus.texto, canvas.width / 2, botoesMissao.pegasus.y + 22);
+
+            // Botão Dinâmico de Confirmação (START)
+            if (missaoSelecionada !== "") {
+                ctx.fillStyle = "#ffcc00";
+                ctx.fillRect(botoesMissao.start.x, botoesMissao.start.y, botoesMissao.start.l, botoesMissao.start.a);
+                ctx.fillStyle = "#000"; ctx.font = "bold 14px sans-serif";
+                ctx.fillText(botoesMissao.start.texto, canvas.width / 2, botoesMissao.start.y + 25);
+            }
+
+            ctx.restore();
         }
 
         if (estadoJogo === "START") {
@@ -840,7 +955,6 @@
             ctx.fillStyle = "#ffffff"; ctx.font = "14px sans-serif";
             ctx.fillText("Star Fighter: Luta Social", canvas.width / 2, canvas.height / 2 - 45);
 
-            // 🔥 O SEU EXCLUSIVO PLACAR DE VISITAS DE GOIÁS NA TELA INICIAL
             ctx.fillStyle = "#ffcc00"; ctx.font = "bold 13px sans-serif";
             ctx.fillText("⚡ " + totalPartidasGerais + " PARTIDAS JOGADAS EM GOIÁS!", canvas.width / 2, canvas.height / 2 - 10);
 
@@ -857,7 +971,6 @@
             ctx.fillStyle = "#ffffff"; ctx.font = "16px sans-serif";
             ctx.fillText("Placar: " + pontuacao, canvas.width / 2, canvas.height / 2 + 15);
             
-            // Reutiliza o botão iniciar para o clique mobile ficar perfeito no celular
             ctx.fillStyle = "#ffcc00"; ctx.fillRect(painel.btnIniciar.x, painel.btnIniciar.y, painel.btnIniciar.l, painel.btnIniciar.a);
             ctx.fillStyle = "#000"; ctx.font = "bold 15px sans-serif";
             ctx.fillText("JOGAR DE NOVO", canvas.width / 2, painel.btnIniciar.y + 25);
@@ -878,6 +991,26 @@
         }
 
         ctx.restore();
+    }
+
+    // --- DISPARADOR DE SCRIPTS EXTERNOS NO GITHUB ---
+    function acionarScriptExterno(nomeFase) {
+        console.log("Injetando arquivo da fase: " + nomeFase);
+        estadoJogo = "CARREGANDO_MODULO"; 
+
+        let scriptFase = document.createElement('script');
+        // Puxa dinamicamente da pasta de fases configurada no seu repositório
+        scriptFase.src = "fases/" + nomeFase + ".js"; 
+        
+        scriptFase.onload = function() {
+            console.log("Módulo " + nomeFase + " carregado com sucesso!");
+            // Procura a função de boot padrão no novo arquivo carregado
+            if (typeof inicializarNovaEtapaJogo === "function") {
+                inicializarNovaEtapaJogo(); 
+            }
+        };
+        
+        document.body.appendChild(scriptFase);
     }
 
     function loop(timestamp) {
