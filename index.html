@@ -1,3 +1,5 @@
+backup 3
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -70,6 +72,10 @@
     const imgAsteroide2 = new Image(); imgAsteroide2.src = "asteroide_2.png";
     const imgAsteroide3 = new Image(); imgAsteroide3.src = "asteroide_3.png";
 
+    // Assets da Transição do Pouso Final (Nova Sala de Comando)
+    const imgCockpit = new Image(); imgCockpit.src = "cockpit.png"; // Sua imagem com vidro transparente!
+    const imgBaseEspacial = new Image(); imgBaseEspacial.src = "base_espacial.png"; // Imagem da base vindo ao fundo
+
     const estrelasFundo = [];
     for(let i = 0; i < 40; i++) {
         estrelasFundo.push({ x: Math.random() * 400, y: Math.random() * 800, tamanho: Math.random() * 2 + 1, vel: Math.random() * 2 + 1 });
@@ -125,15 +131,9 @@
     let tremorCena = 0; 
     let anguloRotacaoGeral = 0; 
 
-    // Variáveis para a Sala de Comando e Seleção de Arquivos Externos
-    let missaoSelecionada = ""; 
-    let opacidadePainel = 0;
-    const botoesMissao = {
-        orion: { x: 0, y: 0, l: 180, a: 45, texto: "MISSÃO ORION" },
-        alfa: { x: 0, y: 0, l: 180, a: 45, texto: "ALFA CENTAURI" },
-        pegasus: { x: 0, y: 0, l: 180, a: 45, texto: "MISSÃO PÉGASO" },
-        start: { x: 0, y: 0, l: 200, a: 50, texto: "INICIAR CONFRONTO" }
-    };
+    // Variáveis controladoras da animação de zoom do cockpit
+    let zoomBasePouso = 5; 
+    let maxZoomBase = 450; 
 
     const x_jogador = { 
         x: 0, y: 0, largura: 55, altura: 55, velocidad: 7,
@@ -194,22 +194,6 @@
         painel.btnIniciar.x = canvas.width / 2 - painel.btnIniciar.l / 2;
         painel.btnIniciar.y = canvas.height / 2 + 60;
 
-        // Posicionamento responsivo dos botões da Sala de Comando
-        let centroX = canvas.width / 2;
-        let centroY = canvas.height / 2;
-        
-        botoesMissao.orion.x = centroX - botoesMissao.orion.l / 2;
-        botoesMissao.orion.y = centroY - 30;
-
-        botoesMissao.alfa.x = centroX - botoesMissao.alfa.l / 2;
-        botoesMissao.alfa.y = centroY + 25;
-
-        botoesMissao.pegasus.x = centroX - botoesMissao.pegasus.l / 2;
-        botoesMissao.pegasus.y = centroY + 80;
-
-        botoesMissao.start.x = centroX - botoesMissao.start.l / 2;
-        botoesMissao.start.y = centroY + 160;
-
         estrelasFundo.forEach(est => est.x = Math.random() * canvas.width);
 
         if (x_jogador.x === 0 || x_jogador.y === 0) {
@@ -234,7 +218,7 @@
         registrarNovaPartida(); 
 
         pontuacao = 0; abates = 0; faseAtual = 1; countAsteroidesProcessados = 0;
-        bossAtivo = false; bossMorrendo = false; tremorCena = 0;
+        bossAtivo = false; bossMorrendo = false; tremorCena = 0; zoomBasePouso = 5;
         dengosao.ativo = false; dengosao.morrendo = false; dengosao.vida = dengosao.vidaMax; dengosao.y = -150;
         x_jogador.vida = x_jogador.vidaMax; x_jogador.tipoTiro = "NORMAL";
         x_jogador.escala = 1; x_jogador.emSucao = false; x_jogador.buracoSugador = null; x_jogador.anguloMorte = 0;
@@ -256,7 +240,7 @@
         for (let i = 0; i < 6; i++) {
             buracosNegros.push({
                 x: Math.random() * (canvas.width - 90) + 45,
-                y: -200 - (i * 650), raioBoca: 25, raioAtracao: 95, velocidadCair: 2.5
+                y: -200 - (i * 650), raioBoca: 25, raioAtracao: 95, velocidadeCair: 2.5
             });
         }
     }
@@ -339,24 +323,6 @@
         }
         if (estadoJogo === "GAMEOVER" || estadoJogo === "VITORIA") { estadoJogo = "START"; return; }
 
-        // Intercepta toques na Sala de Comando interativa da ASH
-        if (estadoJogo === "SALA_COMANDO") {
-            if (tx >= botoesMissao.orion.x && tx <= botoesMissao.orion.x + botoesMissao.orion.l && ty >= botoesMissao.orion.y && ty <= botoesMissao.orion.y + botoesMissao.orion.a) {
-                missaoSelecionada = "orion";
-            }
-            if (tx >= botoesMissao.alfa.x && tx <= botoesMissao.alfa.x + botoesMissao.alfa.l && ty >= botoesMissao.alfa.y && ty <= botoesMissao.alfa.y + botoesMissao.alfa.a) {
-                missaoSelecionada = "alfa";
-            }
-            if (tx >= botoesMissao.pegasus.x && tx <= botoesMissao.pegasus.x + botoesMissao.pegasus.l && ty >= botoesMissao.pegasus.y && ty <= botoesMissao.pegasus.y + botoesMissao.pegasus.a) {
-                missaoSelecionada = "pegasus";
-            }
-
-            if (missaoSelecionada !== "" && tx >= botoesMissao.start.x && tx <= botoesMissao.start.x + botoesMissao.start.l && ty >= botoesMissao.start.y && ty <= botoesMissao.start.y + botoesMissao.start.a) {
-                acionarScriptExterno(missaoSelecionada);
-            }
-            return;
-        }
-
         if (x_jogador.emSucao) return;
         let d = Math.sqrt(Math.pow(tx - painel.btnAtirar.x, 2) + Math.pow(ty - painel.btnAtirar.y, 2));
         if (d <= painel.btnAtirar.raio) atirar();
@@ -380,7 +346,17 @@
 
     // --- MÁQUINA DE LÓGICA ---
     function atualizar(ts) {
-        if (!x_jogador.emSucao && estadoJogo !== "ANIMACAO_POUSO") {
+        // Incrementa o zoom se estiver no estado de pouso
+        if (estadoJogo === "POUSANDO") {
+            if (zoomBasePouso < maxZoomBase) {
+                zoomBasePouso += 2.2; // Velocidade do crescimento da base
+            } else {
+                estadoJogo = "VITORIA"; // Chegou pertinho, vitória decretada!
+            }
+            return;
+        }
+
+        if (!x_jogador.emSucao) {
             estrelasFundo.forEach(est => {
                 est.y += est.vel;
                 if(est.y > canvas.height) { est.y = -10; est.x = Math.random() * canvas.width; }
@@ -393,7 +369,6 @@
 
         anguloRotacaoGeral += 0.05;
 
-        // Gerenciamento de transições normais de fase
         if (estadoJogo === "TRANSICAO") {
             if (faseAtual === 1 && ts - tempoTransicao > 3500) { iniciarFase2(); } 
             else if (faseAtual === 2 && ts - tempoTransicao > 3500) { iniciarFase3(); }
@@ -401,36 +376,11 @@
             return;
         }
 
-        // --- Lógica de Animação de Alçar Voo / Pouso ---
-        if (estadoJogo === "ANIMACAO_POUSO") {
-            x_jogador.y -= 6; 
-            x_jogador.escala -= 0.015;
-            
-            cenario.velocidade = 12; // Efeito de hiper-velocidade
-            cenario.y1 += cenario.velocidade; cenario.y2 += cenario.velocidade;
-            if (cenario.y1 >= canvas.height) cenario.y1 = -canvas.height;
-            if (cenario.y2 >= canvas.height) cenario.y2 = -canvas.height;
-
-            if (x_jogador.escala <= 0) x_jogador.escala = 0;
-
-            if (ts - tempoTransicao > 3500) {
-                estadoJogo = "SALA_COMANDO";
-                missaoSelecionada = "";
-                opacidadePainel = 0;
-            }
-            return;
-        }
-
-        // --- Estado da Sala de Comando da ANG ---
-        if (estadoJogo === "SALA_COMANDO") {
-            if (opacidadePainel < 1) opacidadePainel += 0.02;
-            return; 
-        }
-
         if (estadoJogo !== "JOGANDO") { tremorCena = 0; return; }
         if (tremorCena > 0) tremorCena -= 0.5;
 
         if (x_jogador.emSucao) {
+            // Desativado o dano/morte por buraco negro no Modo Deus de testes
             let bn = x_jogador.buracoSugador;
             let centroNaveX = x_jogador.x + x_jogador.largura / 2;
             let centroNaveY = x_jogador.y + x_jogador.altura / 2;
@@ -439,7 +389,9 @@
             x_jogador.x += distX * 0.05; x_jogador.y += distY * 0.05;
             x_jogador.escala -= 0.0045; x_jogador.anguloMorte += 0.15;
 
-            if (x_jogador.escala <= 0.01) { x_jogador.vida = 0; estadoJogo = "GAMEOVER"; }
+            if (x_jogador.escala <= 0.01) { 
+                x_jogador.emSucao = false; x_jogador.escala = 1; // Resgata a nave para continuar testando
+            }
             return; 
         }
 
@@ -517,28 +469,30 @@
             }
         }
 
-        // Gerador de Asteroides para a Fase 4
+        // =================================================================
+        // ☄️ ESCALA ATUALIZADA SEGUINDO AS PROPORÇÕES DO SEU PROJETO
+        // =================================================================
         if (faseAtual === 4 && ts - ultimoAsteroideCriado > 1100 && countAsteroidesProcessados < META_FIM_ASTEROIDES) {
             let dadosSorteio = Math.random();
             let nomeTipo = "asteroide_1";
-            let tam = 40; let rVida = 1; let velQueda = 4.5;
+            let lamWidth = 40; let altHeight = 80; let rVida = 1; let velQueda = 4.5; // Oval Pequeno (1:2)
 
-            if (dadosSorteio >= 0.5 && dadosSorteio < 0.85) {
-                nomeTipo = "asteroide_2"; tam = 70; rVida = 5; velQueda = 3.5;
-            } else if (dadosSorteio >= 0.85) {
-                nomeTipo = "asteroide_3"; tam = 115; rVida = 10; velQueda = 2.5;
+            if (dadosSorteio >= 0.45 && dadosSorteio < 0.80) {
+                nomeTipo = "asteroide_2"; lamWidth = 90; altHeight = 90; rVida = 4; velQueda = 3.5; // Esfera Média (1:1)
+            } else if (dadosSorteio >= 0.80) {
+                nomeTipo = "asteroide_3"; lamWidth = 70; altHeight = 240; rVida = 8; velQueda = 2.2; // Charuto Grandão
             }
 
             asteroides.push({
                 tipo: nomeTipo,
-                x: Math.random() * (canvas.width - tam - 20) + 10,
-                y: -tam - 10,
-                largura: tam,
-                altura: tam,
+                x: Math.random() * (canvas.width - lamWidth - 20) + 10,
+                y: -altHeight - 10,
+                largura: lamWidth,
+                altura: altHeight,
                 vida: rVida,
                 velY: velQueda,
                 angulo: Math.random() * Math.PI,
-                velRotacao: (Math.random() - 0.5) * 0.06
+                velRotacao: (Math.random() - 0.5) * 0.05
             });
             ultimoAsteroideCriado = ts;
         }
@@ -627,11 +581,11 @@
                 ast.y += ast.velY;
                 ast.angulo += ast.velRotacao;
 
+                // Colisão com a nave (Ignorado dano fatal em Modo Deus de teste)
                 if (verificarColisao(ast, x_jogador)) {
                     instanciarExplosao(ast.x, ast.y, ast.largura, ast.altura);
                     asteroides.splice(i, 1);
-                    x_jogador.vida = 0; 
-                    estadoJogo = "GAMEOVER";
+                    countAsteroidesProcessados++;
                     continue;
                 }
 
@@ -641,11 +595,10 @@
                 }
             }
 
-            // GATILHO: Dispara a nova transição cinemática para a base ASH ao limpar o cinturão!
+            // SE COLOCOU FIM AO CINTURÃO: Inicia a animação cinematográfica de Pouso!
             if (countAsteroidesProcessados >= META_FIM_ASTEROIDES && asteroides.length === 0) {
-                estadoJogo = "ANIMACAO_POUSO";
-                tempoTransicao = ts;
-                x_jogador.escala = 1; 
+                estadoJogo = "POUSANDO";
+                zoomBasePouso = 5; // Reseta tamanho inicial pequenininho longe
             }
         }
 
@@ -654,8 +607,8 @@
             let bm = bolasMalditas[i]; bm.y += bm.vel;
             if (verificarColisao(bm, x_jogador)) {
                 instanciarExplosao(bm.x, bm.y, 20, 20); bolasMalditas.splice(i, 1);
-                x_jogador.vida--; tremorCena = 10; 
-                if (x_jogador.vida <= 0) { estadoJogo = "GAMEOVER"; }
+                // Sem redução de vida ativa (Modo Deus para homologação de rotas)
+                tremorCena = 10; 
                 continue;
             }
             if (bm.y > painel.y) bolasMalditas.splice(i, 1);
@@ -666,8 +619,7 @@
             let fr = ferroesInimigos[i]; fr.y += fr.vel;
             if (verificarColisao(fr, x_jogador)) {
                 instanciarExplosao(fr.x, fr.y, 25, 25); ferroesInimigos.splice(i, 1);
-                x_jogador.vida -= 2; tremorCena = 20;
-                if (x_jogador.vida <= 0) { estadoJogo = "GAMEOVER"; }
+                tremorCena = 20;
                 continue;
             }
             if (fr.y > painel.y) ferroesInimigos.splice(i, 1);
@@ -687,10 +639,7 @@
                 if (distancia <= bn.raioBoca && !x_jogador.emSucao) {
                     x_jogador.emSucao = true; x_jogador.buracoSugador = bn; tocarSomSucao(); 
                 }
-                else if (distancia <= bn.raioAtracao && !x_jogador.emSucao) {
-                    if (centroNaveX < bn.x) x_jogador.x += 1.4; else x_jogador.x -= 1.4;
-                    if (centroNaveY < bn.y) x_jogador.y += 1.4; else x_jogador.y -= 1.4;
-                }
+                // Atração reduzida em modo teste para não prender a nave
             }
             if (todosPassaram && buracosNegros.length > 0 && !x_jogador.emSucao) {
                 estadoJogo = "TRANSICAO"; tempoTransicao = ts;
@@ -729,6 +678,40 @@
             ctx.fillStyle = "#ffffff"; estrelasFundo.forEach(est => { ctx.fillRect(est.x, est.y, est.tamanho, est.tamanho); });
         }
 
+        // =================================================================
+        // 🚀 RENDERIZADOR DA ANIMAÇÃO DE POUSO (CINEMATOGRÁFICA COCKPIT)
+        // =================================================================
+        if (estadoJogo === "POUSANDO") {
+            // 1. Desenha a base espacial ao fundo (ficando maior a cada frame)
+            if (imgBaseEspacial.complete && imgBaseEspacial.width > 0) {
+                let bX = canvas.width / 2 - zoomBasePouso / 2;
+                let bY = canvas.height / 2 - zoomBasePouso / 1.6; // Deslocamento centralizado vertical
+                ctx.drawImage(imgBaseEspacial, bX, bY, zoomBasePouso, zoomBasePouso);
+            } else {
+                // Alternativa visual caso a imagem da base falhe
+                ctx.fillStyle = "#00ffcc";
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, canvas.height / 2, zoomBasePouso / 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 2. Desenha o cockpit em Primeiro Plano (sobrepondo a base com o vidro transparente)
+            if (imgCockpit.complete && imgCockpit.width > 0) {
+                ctx.drawImage(imgCockpit, 0, 0, canvas.width, canvas.height);
+            } else {
+                // Desenho de segurança caso a imagem do cockpit não carregue
+                ctx.strokeStyle = "#00d2ff"; ctx.lineWidth = 4;
+                ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+                ctx.fillStyle = "#fff"; ctx.font = "14px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText("[ Visor do Cockpit Técnico ]", canvas.width / 2, 50);
+            }
+
+            ctx.fillStyle = "#ffcc00"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center";
+            ctx.fillText("APROXIMAÇÃO E POUSO NA SALA DE COMANDO...", canvas.width / 2, canvas.height - 180);
+            ctx.restore();
+            return; // Interrompe o desenho padrão dos elementos de batalha
+        }
+
         if (faseAtual === 2) {
             buracosNegros.forEach(bn => {
                 ctx.save(); ctx.translate(bn.x, bn.y); ctx.rotate(anguloRotacaoGeral); 
@@ -762,7 +745,7 @@
             }
         });
 
-        // Renderizar e Rotacionar Asteroides da Fase 4
+        // Rendering Dinâmico com rotação individual dos Asteroides da Fase 4
         if (faseAtual === 4) {
             asteroides.forEach(ast => {
                 ctx.save();
@@ -783,7 +766,7 @@
                 ctx.restore();
 
                 if (ast.tipo !== "asteroide_1") {
-                    let maxV = ast.tipo === "asteroide_3" ? 10 : 5;
+                    let maxV = ast.tipo === "asteroide_3" ? 8 : 4;
                     ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(ast.x, ast.y - 7, ast.largura, 4);
                     ctx.fillStyle = "#ffaa00"; ctx.fillRect(ast.x, ast.y - 7, (ast.vida / maxV) * ast.largura, 4);
                 }
@@ -819,13 +802,12 @@
             else { ctx.fillStyle = "#ffcc00"; ctx.beginPath(); ctx.arc(bm.x+7, bm.y+7, 7, 0, Math.PI*2); ctx.fill(); }
         });
 
-        // Desenhar os ferrões do Dengosão
         ferroesInimigos.forEach(fr => {
             if (imgFerrao.complete && imgFerrao.width > 0) { ctx.drawImage(imgFerrao, fr.x, fr.y, fr.largura, fr.altura); } 
             else { ctx.fillStyle = "#ff4500"; ctx.fillRect(fr.x, fr.y, fr.largura, fr.altura); }
         });
 
-        if (estadoJogo === "JOGANDO" || x_jogador.emSucao || estadoJogo === "ANIMACAO_POUSO") {
+        if (estadoJogo === "JOGANDO" || x_jogador.emSucao) {
             ctx.save(); let cX = x_jogador.x + x_jogador.largura / 2; let cY = x_jogador.y + x_jogador.altura / 2;
             ctx.translate(cX, cY); ctx.scale(x_jogador.escala, x_jogador.escala); ctx.rotate(x_jogador.anguloMorte); 
             
@@ -834,10 +816,11 @@
             ctx.restore();
         }
 
-        explosoes.forEach(ex => {
+        for (let i = explosoes.length - 1; i >= 0; i--) {
+            let ex = explosoes[i];
             ctx.fillStyle = "rgba(255, 90, 0, " + (ex.vida / ex.vidaMax) + ")";
             ctx.beginPath(); ctx.arc(ex.x + ex.largura/2, ex.y + ex.altura/2, ex.largura * 1.5, 0, Math.PI*2); ctx.fill();
-        });
+        }
 
         // Painel Superior de Vida
         ctx.fillStyle = "rgba(255, 255, 255, 0.12)"; ctx.fillRect(25, 25, 120, 12);
@@ -857,7 +840,7 @@
         if (faseAtual === 4) subTextoFase = "Fase 4: Campo de Asteroides ☄️";
         ctx.fillText(subTextoFase, 25, 68);
 
-        // Controles Touch de Jogabilidade
+        // Controles Touch
         if (estadoJogo === "JOGANDO") {
             ctx.fillStyle = "rgba(255, 255, 255, 0.22)"; ctx.font = "24px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText("▲", painel.btnCima.x + 25, painel.btnCima.y + 25);
@@ -896,57 +879,6 @@
             }
         }
 
-        // ========================================================
-        // 🚀 NOVA INTERFACE: SALA DE COMANDO INTERATIVA DA ASH
-        // ========================================================
-        if (estadoJogo === "SALA_COMANDO") {
-            ctx.fillStyle = "rgba(4, 8, 20, 0.98)"; 
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.save();
-            ctx.globalAlpha = opacidadePainel;
-
-            ctx.textAlign = "center";
-            ctx.fillStyle = "#00ffcc"; ctx.font = "bold 20px sans-serif";
-            ctx.fillText("SALA DE COMANDO ASH", canvas.width / 2, canvas.height / 2 - 160);
-            
-            ctx.fillStyle = "#ffffff"; ctx.font = "13px sans-serif";
-            ctx.fillText("Bem-vindo de volta, Comandante Mauro!", canvas.width / 2, canvas.height / 2 - 130);
-            ctx.fillStyle = "#8899a6";
-            ctx.fillText("Missão cumprida. Selecione a próxima frente:", canvas.width / 2, canvas.height / 2 - 110);
-
-            // Botão: Missão Orion
-            ctx.fillStyle = missaoSelecionada === "orion" ? "#00ffcc" : "rgba(0, 210, 255, 0.15)";
-            ctx.fillRect(botoesMissao.orion.x, botoesMissao.orion.y, botoesMissao.orion.l, botoesMissao.orion.a);
-            ctx.strokeStyle = "#00d2ff"; ctx.strokeRect(botoesMissao.orion.x, botoesMissao.orion.y, botoesMissao.orion.l, botoesMissao.orion.a);
-            ctx.fillStyle = missaoSelecionada === "orion" ? "#000" : "#fff"; ctx.font = "bold 13px sans-serif"; ctx.textBaseline = "middle";
-            ctx.fillText(botoesMissao.orion.texto, canvas.width / 2, botoesMissao.orion.y + 22);
-
-            // Botão: Alfa Centauri
-            ctx.fillStyle = missaoSelecionada === "alfa" ? "#00ffcc" : "rgba(0, 210, 255, 0.15)";
-            ctx.fillRect(botoesMissao.alfa.x, botoesMissao.alfa.y, botoesMissao.alfa.l, botoesMissao.alfa.a);
-            ctx.strokeStyle = "#00d2ff"; ctx.strokeRect(botoesMissao.alfa.x, botoesMissao.alfa.y, botoesMissao.alfa.l, botoesMissao.alfa.a);
-            ctx.fillStyle = missaoSelecionada === "alfa" ? "#000" : "#fff";
-            ctx.fillText(botoesMissao.alfa.texto, canvas.width / 2, botoesMissao.alfa.y + 22);
-
-            // Botão: Missão Pégaso
-            ctx.fillStyle = missaoSelecionada === "pegasus" ? "#00ffcc" : "rgba(0, 210, 255, 0.15)";
-            ctx.fillRect(botoesMissao.pegasus.x, botoesMissao.pegasus.y, botoesMissao.pegasus.l, botoesMissao.pegasus.a);
-            ctx.strokeStyle = "#00d2ff"; ctx.strokeRect(botoesMissao.pegasus.x, botoesMissao.pegasus.y, botoesMissao.pegasus.l, botoesMissao.pegasus.a);
-            ctx.fillStyle = missaoSelecionada === "pegasus" ? "#000" : "#fff";
-            ctx.fillText(botoesMissao.pegasus.texto, canvas.width / 2, botoesMissao.pegasus.y + 22);
-
-            // Botão Dinâmico de Confirmação (START)
-            if (missaoSelecionada !== "") {
-                ctx.fillStyle = "#ffcc00";
-                ctx.fillRect(botoesMissao.start.x, botoesMissao.start.y, botoesMissao.start.l, botoesMissao.start.a);
-                ctx.fillStyle = "#000"; ctx.font = "bold 14px sans-serif";
-                ctx.fillText(botoesMissao.start.texto, canvas.width / 2, botoesMissao.start.y + 25);
-            }
-
-            ctx.restore();
-        }
-
         if (estadoJogo === "START") {
             ctx.fillStyle = "rgba(5, 5, 15, 0.9)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center";
@@ -982,7 +914,7 @@
             ctx.fillStyle = "#00ffcc"; ctx.font = "bold 32px sans-serif";
             ctx.fillText("GALÁXIA SALVA!", canvas.width / 2, canvas.height / 2 - 50);
             ctx.fillStyle = "#ffffff"; ctx.font = "15px sans-serif";
-            ctx.fillText("Você superou os vírus e o Cinturão de Asteroides!", canvas.width / 2, canvas.height / 2 + 5);
+            ctx.fillText("Você pousou com segurança na Sala de Comando!", canvas.width / 2, canvas.height / 2 + 5);
             ctx.fillText("Pontuação de Elite: " + pontuacao, canvas.width / 2, canvas.height / 2 + 35);
             
             ctx.fillStyle = "#00d2ff"; ctx.fillRect(painel.btnIniciar.x, painel.btnIniciar.y, painel.btnIniciar.l, painel.btnIniciar.a);
@@ -990,27 +922,7 @@
             ctx.fillText("VOLTAR AO MENU", canvas.width / 2, painel.btnIniciar.y + 25);
         }
 
-        ctx.restore();
-    }
-
-    // --- DISPARADOR DE SCRIPTS EXTERNOS NO GITHUB ---
-    function acionarScriptExterno(nomeFase) {
-        console.log("Injetando arquivo da fase: " + nomeFase);
-        estadoJogo = "CARREGANDO_MODULO"; 
-
-        let scriptFase = document.createElement('script');
-        // Puxa dinamicamente da pasta de fases configurada no seu repositório
-        scriptFase.src = "fases/" + nomeFase + ".js"; 
-        
-        scriptFase.onload = function() {
-            console.log("Módulo " + nomeFase + " carregado com sucesso!");
-            // Procura a função de boot padrão no novo arquivo carregado
-            if (typeof inicializarNovaEtapaJogo === "function") {
-                inicializarNovaEtapaJogo(); 
-            }
-        };
-        
-        document.body.appendChild(scriptFase);
+        ctx.stroke();
     }
 
     function loop(timestamp) {
@@ -1026,3 +938,4 @@
 </script>
 </body>
 </html>
+
