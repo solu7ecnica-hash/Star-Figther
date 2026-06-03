@@ -82,6 +82,7 @@
     }
 
     // Funções de Áudio
+    ]
     function tocarSomTiro() {
         try { const som = new Audio("til.mp3"); som.volume = 0.2; som.play().catch(() => {}); } catch (e) {}
     }
@@ -212,6 +213,10 @@
         painel.btnEsq.y = painel.y + 50;
         painel.btnDir.y = painel.y + 50;
         painel.btnBaixo.y = painel.y + 90;
+        painel.btnCima.l = 80; painel.btnCima.a = 80;
+        painel.btnEsq.l = 80; painel.btnEsq.a = 80;
+        painel.btnDir.l = 80;painel.btnDir.a = 80;
+        painel.btnBaixo.l = 80; painel.btn.Baixo.a = 80;
         painel.btnAtirar.x = canvas.width - painel.btnAtirar.raio - 20;
         painel.btnAtirar.y = painel.y + (painel.altura / 2);
         painel.btnIniciar.x = canvas.width / 2 - painel.btnIniciar.l / 2;
@@ -1123,7 +1128,7 @@
             ctx.fillText(subTextoFase, 25, 84);
 
             // Controles Touch de Direção e Tiro
-            ctx.fillStyle = "rgba(255, 255, 255, 0.22)"; ctx.font = "24px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.22)"; ctx.font = "36px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText("▲", painel.btnCima.x + 25, painel.btnCima.y + 25);
             ctx.fillText("◀️", painel.btnEsq.x + 25, painel.btnEsq.y + 25);
             ctx.fillText("▶️", painel.btnDir.x + 25, painel.btnDir.y + 25);
