@@ -1143,4 +1143,114 @@
                 let textoParaExibir = textoCompletoMensagem.substring(0, caracteresVisiveisTexto);
                 ctx.fillStyle = "#00ffcc"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
                 
-                escreverTextoBlocoQuebrado(ctx, textoParaExibir,
+                escreverTextoBlocoQuebrado(ctx, textoParaExibir, canvas.width / 2, 30, canvas.width - 40, 19);
+
+                if (caracteresVisiveisTexto >= textoCompletoMensagem.length) {
+                    ctx.fillStyle = "#00ffff";
+                    ctx.fillRect(painel.btnRota1.x, painel.btnRota1.y, painel.btnRota1.l, painel.btnRota1.a);
+                    ctx.fillStyle = "#000"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillText("REPETIR OPERAÇÃO", painel.btnRota1.x + painel.btnRota1.l / 2, painel.btnRota1.y + painel.btnRota1.a / 2);
+
+                    ctx.fillStyle = "#ffaa00";
+                    ctx.fillRect(painel.btnRota2.x, painel.btnRota2.y, painel.btnRota2.l, painel.btnRota2.a);
+                    ctx.fillStyle = "#000"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
+                    ctx.fillText("PRÓXIMA ROTA (V1.5)", painel.btnRota2.x + painel.btnRota2.l / 2, painel.btnRota2.y + painel.btnRota2.a / 2);
+                }
+            }
+
+            if (opacidadeFade > 0) {
+                ctx.fillStyle = "rgba(0, 0, 0, " + opacidadeFade + ")";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        if (estadoJogo === "TRANSICAO") {
+            ctx.fillStyle = "rgba(5, 0, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillStyle = "#00ffcc"; ctx.font = "bold 22px sans-serif";
+            
+            if (faseAtual === 1) {
+                ctx.fillText("PANDEMIA CONTROLADA!", canvas.width / 2, canvas.height / 2 - 40);
+                ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif";
+                ctx.fillText("FASE 2: Cuidado com os buracos negros!", canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillStyle = "#ff5500"; ctx.font = "bold 15px sans-serif";
+                ctx.fillText("ZONA MAGNÉTICA", canvas.width / 2, canvas.height / 2 + 45);
+            } else if (faseAtual === 2) {
+                ctx.fillText("ZONA MAGNÉTICA SUPERADA!", canvas.width / 2, canvas.height / 2 - 40);
+                ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif";
+                ctx.fillText("FASE 3: Alerta de Criadouro Máximo!", canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillStyle = "#ff2244"; ctx.font = "bold 17px sans-serif";
+                ctx.fillText("CHEFE FINAL: O DENGOSÃO EMERGIU!", canvas.width / 2, canvas.height / 2 + 45);
+            } else if (faseAtual === 3) {
+                ctx.fillText("O DENGOSÃO FOI ANIQUILADO!", canvas.width / 2, canvas.height / 2 - 40);
+                ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif";
+                ctx.fillText("FASE 4: Dobra Espacial Descontrolada!", canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillStyle = "#ffcc00"; ctx.font = "bold 17px sans-serif";
+                ctx.fillText("PERIGO: CINTURÃO DE ASTEROIDES!", canvas.width / 2, canvas.height / 2 + 45);
+            }
+        }
+
+        if (estadoJogo === "START") {
+            ctx.fillStyle = "rgba(5, 5, 15, 0.9)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "#00d2ff"; ctx.font = "bold 32px sans-serif";
+            ctx.fillText("FERRATECH JOGOS", canvas.width / 2, canvas.height / 2 - 80);
+            ctx.fillStyle = "#ffffff"; ctx.font = "14px sans-serif";
+            ctx.fillText("Star Fighter: Luta Social", canvas.width / 2, canvas.height / 2 - 45);
+
+            ctx.fillStyle = "#ffcc00"; ctx.font = "bold 13px sans-serif";
+            ctx.fillText("⚡ " + totalPartidasGerais + " PARTIDAS JOGADAS EM GOIÁS!", canvas.width / 2, canvas.height / 2 - 10);
+
+            ctx.fillStyle = "#00ffcc"; ctx.fillRect(painel.btnIniciar.x, painel.btnIniciar.y, painel.btnIniciar.l, painel.btnIniciar.a);
+            ctx.fillStyle = "#000"; ctx.font = "bold 16px sans-serif"; ctx.textBaseline = "middle";
+            ctx.fillText("INICIAR JOGO", canvas.width / 2, painel.btnIniciar.y + 25);
+        }
+
+        if (estadoJogo === "GAMEOVER") {
+            ctx.fillStyle = "rgba(15, 0, 5, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillStyle = "#ff2244"; ctx.font = "bold 36px sans-serif";
+            ctx.fillText("FIM DE JOGO", canvas.width / 2, canvas.height / 2 - 40);
+            ctx.fillStyle = "#ffffff"; ctx.font = "16px sans-serif";
+            ctx.fillText("Placar: " + pontuacao, canvas.width / 2, canvas.height / 2 + 15);
+            
+            ctx.fillStyle = "#ffcc00"; ctx.fillRect(painel.btnIniciar.x, painel.btnIniciar.y, painel.btnIniciar.l, painel.btnIniciar.a);
+            ctx.fillStyle = "#000"; ctx.font = "bold 15px sans-serif";
+            ctx.fillText("JOGAR DE NOVO", canvas.width / 2, painel.btnIniciar.y + 25);
+        }
+
+        ctx.restore();
+    }
+
+    function escreverTextoBlocoQuebrado(contexto, texto, x, y, larguraMaxima, espacamentoLinha) {
+        let palavras = texto.split(' ');
+        let linha = '';
+        let posY = y;
+
+        for (let n = 0; n < palavras.length; n++) {
+            let linhaTeste = linha + palavras[n] + ' ';
+            let metricas = contexto.measureText(linhaTeste);
+            if (metricas.width > larguraMaxima && n > 0) {
+                contexto.fillText(linha, x, posY);
+                linha = palavras[n] + ' ';
+                posY += espacamentoLinha;
+            } else {
+                linha = linhaTeste;
+            }
+        }
+        contexto.fillText(linha, x, posY);
+    }
+
+    function loop(timestamp) {
+        atualizar(timestamp || performance.now());
+        desenhar();
+        requestAnimationFrame(loop);
+    }
+
+    ajustarTela();
+    window.addEventListener("resize", ajustarTela);
+    window.addEventListener("orientationchange", ajustarTela);
+    requestAnimationFrame(loop);
+</script>
+</body>
+</html>
