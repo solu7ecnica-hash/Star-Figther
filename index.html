@@ -104,7 +104,7 @@
     }
 
     // ==========================================
-    // 📊 LÓGICA DO CONTADOR DE PARTIDAS GTAG FIX
+    // LÓGICA DO CONTADOR DE PARTIDAS GTAG FIX
     // ==========================================
     let totalPartidasGerais = parseInt(localStorage.getItem("ferratech_partidas_locais")) || 142;
 
@@ -112,7 +112,6 @@
         totalPartidasGerais++;
         localStorage.setItem("ferratech_partidas_locais", totalPartidasGerais);
         
-        // 🔧 FIX DA ANTENA: Corrigido de 'gatg' para 'gtag' e aspas retas corrigidas
         if (typeof gtag === 'function') {
             gtag('event', 'partida_iniciada', {
                 'event_category': 'Engajamento',
@@ -135,13 +134,13 @@
     let tremorCena = 0; 
     let anguloRotacaoGeral = 0; 
 
-    // 🚀 VARIÁVEIS DA ANIMAÇÃO CINEMÁTICA ORION (ENTRADA DO JOGO)
+    // VARIÁVEIS DA ANIMAÇÃO CINEMÁTICA ORION (ENTRADA DO JOGO)
     let subEstadoOrion = "COCKPIT_DIMINUINDO";
     let escalaCockpitOrion = 1.0;
     let escalaNaveOrion = 4.0; 
     let tempoInicioOrion = 0;
 
-    // 🚀 VARIÁVEIS DE ESTADO DA CINEMÁTICA FINAL DE POUSO
+    // VARIÁVEIS DE ESTADO DA CINEMÁTICA FINAL DE POUSO
     let subEstadoCinematica = "PILOTO_AUTOMATICO"; 
     let tempoInicioCinematica = 0;
     let escalaBaseEspacial = 0.05; 
@@ -150,13 +149,13 @@
     let caracteresVisiveisTexto = 0;
     let tempoUltimoCaractereMina = 0;
 
-    // 💣 VARIÁVEIS DO COMBO DO MÍSSIL ESPECIAL
+    // VARIÁVEIS DO COMBO DO MÍSSIL ESPECIAL
     let sequenciaComando = [];
     let tempoUltimoCliqueCombo = 0;
     let qtdMisseis = 0;
     const m_tiros_especiais = []; 
 
-    // 🚀 NAVE TURBINADA PARA TAMANHO 65
+    // NAVE TURBINADA PARA TAMANHO 65
     const x_jogador = { 
         x: 0, y: 0, largura: 65, altura: 65, velocidad: 7,
         movendoEsquerda: false, movendoDireita: false, movendoCima: false, movendoBaixo: false,
@@ -195,7 +194,7 @@
         vidaMax: 60, vida: 60, ultTiroBola: 0, ultTiroFerrao: 0, ativo: false, morrendo: false, tempoMorte: 0
     };
 
-    // 🎮 BOTÕES CONFIGURADOS DE FÁBRICA COM TAMANHO 90
+    // BOTÕES CONFIGURADOS DE FÁBRICA COM TAMANHO 90
     const painel = {
         y: 0, altura: 150,
         btnEsq: { x: 15, y: 0, l: 90, a: 90 },
@@ -320,4 +319,828 @@
 
     function instanciarExplosao(x, y, l, a) {
         explosoes.push({ x, y, largura: l, altura: a, vidaMax: 25, vida: 25 });
-        t
+        tocarSomExplosaoComum();
+    }
+
+    function tentarDropPowerup(x, y) {
+        if (Math.random() < 0.30) { 
+            let tipo = Math.random() < 0.5 ? "TIRO_DUPLO" : "VIDA";
+            powerups.push({ x, y, largura: 25, altura: 25, vel: 2.5, tipo: tipo });
+        }
+    }
+
+    function registrarEntradaCombo(direcao) {
+        const agora = performance.now();
+        if (agora - tempoUltimoCliqueCombo > 800) {
+            sequenciaComando = []; 
+        }
+        tempoUltimoCliqueCombo = agora;
+
+        sequenciaComando.push(direcao);
+        if (sequenciaComando.length > 3) sequenciaComando.shift();
+
+        if (sequenciaComando.join(",") === "Baixo,Baixo,Cima") {
+            if (qtdMisseis > 0) {
+                dispararMissil();
+                qtdMisseis--;
+            }
+            sequenciaComando = []; 
+        }
+    }
+
+    function dispararMissil() {
+        m_tiros_especiais.push({
+            x: x_jogador.x + x_jogador.largura / 2 - 15,
+            y: x_jogador.y - 45,
+            largura: 30,
+            altura: 50,
+            vel: 10
+        });
+        tocarSomMissil();
+    }
+
+    // --- CONTROLES TECLADO ---
+    window.addEventListener("keydown", e => {
+        if (estadoJogo === "START" && (e.key === " " || e.key === "Enter")) { reiniciarJogo(); return; }
+        if (estadoJogo === "GAMEOVER" && (e.key === " " || e.key === "Enter")) { estadoJogo = "START"; return; }
+        
+        if (estadoJogo === "CINEMATICA_FINAL" && subEstadoCinematica === "SALA_CONTROLE") {
+            if (e.key === "1") { estadoJogo = "START"; }
+            if (e.key === "2") { alert("A v1.5 está chegando! Próximas missões em desenvolvimento."); }
+            return;
+        }
+
+        if (estadoJogo !== "JOGANDO" || x_jogador.emSucao) return;
+
+        if (e.key === "ArrowLeft" || e.key === "a") x_jogador.movendoEsquerda = true;
+        if (e.key === "ArrowRight" || e.key === "d") x_jogador.movendoDireita = true;
+        
+        if (e.key === "ArrowUp" || e.key === "w") {
+            x_jogador.movendoCima = true;
+            registrarEntradaCombo("Cima");
+        }
+        if (e.key === "ArrowDown" || e.key === "s") {
+            x_jogador.movendoBaixo = true;
+            registrarEntradaCombo("Baixo");
+        }
+        if (e.key === " " || e.key === "Enter") atirar();
+    });
+
+    window.addEventListener("keyup", e => {
+        if (e.key === "ArrowLeft" || e.key === "a") x_jogador.movendoEsquerda = false;
+        if (e.key === "ArrowRight" || e.key === "d") x_jogador.movendoDireita = false;
+        if (e.key === "ArrowUp" || e.key === "w") x_jogador.movendoCima = false;
+        if (e.key === "ArrowDown" || e.key === "s") x_jogador.movendoBaixo = false;
+    });
+
+    function processarToques(e) {
+        if (estadoJogo !== "JOGANDO" || x_jogador.emSucao) return;
+        e.preventDefault();
+        x_jogador.movendoEsquerda = false; x_jogador.movendoDireita = false;
+        x_jogador.movendoCima = false; x_jogador.movendoBaixo = false;
+
+        const rect = canvas.getBoundingClientRect();
+        for (let i = 0; i < e.touches.length; i++) {
+            const t = e.touches[i]; const tx = t.clientX - rect.left; const ty = t.clientY - rect.top;
+
+            if (tx >= painel.btnEsq.x && tx <= painel.btnEsq.x + painel.btnEsq.l && ty >= painel.btnEsq.y && ty <= painel.btnEsq.y + painel.btnEsq.a) x_jogador.movendoEsquerda = true;
+            if (tx >= painel.btnDir.x && tx <= painel.btnDir.x + painel.btnDir.l && ty >= painel.btnDir.y && ty <= painel.btnDir.y + painel.btnDir.a) x_jogador.movendoDireita = true;
+            if (tx >= painel.btnCima.x && tx <= painel.btnCima.x + painel.btnCima.l && ty >= painel.btnCima.y && ty <= painel.btnCima.y + painel.btnCima.a) x_jogador.movendoCima = true;
+            if (tx >= painel.btnBaixo.x && tx <= painel.btnBaixo.x + painel.btnBaixo.l && ty >= painel.btnBaixo.y && ty <= painel.btnBaixo.y + painel.btnBaixo.a) x_jogador.movendoBaixo = true;
+        }
+    }
+
+    canvas.addEventListener("touchstart", e => {
+        const rect = canvas.getBoundingClientRect(); const t = e.changedTouches[0];
+        const tx = t.clientX - rect.left; const ty = t.clientY - rect.top;
+
+        if (estadoJogo === "START") {
+            if (tx >= painel.btnIniciar.x && tx <= painel.btnIniciar.x + painel.btnIniciar.l && ty >= painel.btnIniciar.y && ty <= painel.btnIniciar.y + painel.btnIniciar.a) {
+                reiniciarJogo();
+            }
+            return;
+        }
+        if (estadoJogo === "GAMEOVER") { estadoJogo = "START"; return; }
+
+        if (estadoJogo === "CINEMATICA_FINAL" && subEstadoCinematica === "SALA_CONTROLE") {
+            if (tx >= painel.btnRota1.x && tx <= painel.btnRota1.x + painel.btnRota1.l && ty >= painel.btnRota1.y && ty <= painel.btnRota1.y + painel.btnRota1.a) {
+                estadoJogo = "START";
+            }
+            if (tx >= painel.btnRota2.x && tx <= painel.btnRota2.x + painel.btnRota2.l && ty >= painel.btnRota2.y && ty <= painel.btnRota2.y + painel.btnRota2.a) {
+                alert("A v1.5 está chegando! Próximas missões em desenvolvimento.");
+            }
+            return;
+        }
+
+        if (x_jogador.emSucao) return;
+        
+        if (tx >= painel.btnCima.x && tx <= painel.btnCima.x + painel.btnCima.l && ty >= painel.btnCima.y && ty <= painel.btnCima.y + painel.btnCima.a) {
+            registrarEntradaCombo("Cima");
+        }
+        if (tx >= painel.btnBaixo.x && tx <= painel.btnBaixo.x + painel.btnBaixo.l && ty >= painel.btnBaixo.y && ty <= painel.btnBaixo.y + painel.btnBaixo.a) {
+            registrarEntradaCombo("Baixo");
+        }
+
+        let d = Math.sqrt(Math.pow(tx - painel.btnAtirar.x, 2) + Math.pow(ty - painel.btnAtirar.y, 2));
+        if (d <= painel.btnAtirar.raio) atirar();
+
+        processarToques(e);
+    }, { passive: false });
+
+    canvas.addEventListener("touchmove", processarToques, { passive: false });
+    canvas.addEventListener("touchend", processarToques, { passive: false });
+
+    function atirar() {
+        if (estadoJogo !== "JOGANDO" || x_jogador.emSucao) return;
+        if (x_jogador.tipoTiro === "DUPLO") {
+            tiros.push({ x: x_jogador.x + 5, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 13 });
+            tiros.push({ x: x_jogador.x + x_jogador.largura - 15, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 13 });
+        } else {
+            tiros.push({ x: x_jogador.x + x_jogador.largura/2 - 5, y: x_jogador.y - 25, largura: 10, altura: 25, vel: 12 });
+        }
+        tocarSomTiro();
+    }
+
+    // --- MÁQUINA DE LÓGICA E PROCESSAMENTO DE TRILHAS ---
+    function atualizar(ts) {
+        
+        if (estadoJogo === "CINEMATICA_ORION") {
+            estrelasFundo.forEach(est => {
+                est.y += est.vel * 0.5;
+                if(est.y > canvas.height) { est.y = -10; est.x = Math.random() * canvas.width; }
+            });
+
+            if (subEstadoOrion === "COCKPIT_DIMINUINDO") {
+                escalaCockpitOrion -= 0.008; 
+                if (escalaCockpitOrion <= 0) {
+                    escalaCockpitOrion = 0;
+                    subEstadoOrion = "NAVE_DIMINUINDO";
+                }
+            } else if (subEstadoOrion === "NAVE_DIMINUINDO") {
+                escalaNaveOrion -= 0.05; 
+                if (escalaNaveOrion <= 1.0) {
+                    escalaNaveOrion = 1.0;
+                    estadoJogo = "JOGANDO"; 
+                }
+            }
+            return;
+        }
+
+        if (estadoJogo === "CINEMATICA_FINAL") {
+            estrelasFundo.forEach(est => {
+                est.y += est.vel * 0.3;
+                if(est.y > canvas.height) { est.y = -10; est.x = Math.random() * canvas.width; }
+            });
+
+            if (subEstadoCinematica === "PILOTO_AUTOMATICO") {
+                let centroAlinhadoX = canvas.width / 2 - x_jogador.largura / 2;
+                x_jogador.x += (centroAlinhadoX - x_jogador.x) * 0.05;
+                x_jogador.y -= 2.2; 
+
+                if (x_jogador.y + x_jogador.altura < 0) {
+                    subEstadoCinematica = "VISAO_COCKPIT";
+                    escalaBaseEspacial = 0.05; 
+                    tempoInicioCinematica = ts;
+                }
+            } 
+            else if (subEstadoCinematica === "VISAO_COCKPIT") {
+                if (escalaBaseEspacial < 1.0) {
+                    escalaBaseEspacial += 0.0025; 
+                } else {
+                    subEstadoCinematica = "FADE_OUT";
+                    tempoInicioCinematica = ts;
+                    opacidadeFade = 0;
+                }
+            } 
+            else if (subEstadoCinematica === "FADE_OUT") {
+                opacidadeFade += 0.02; 
+                if (opacidadeFade >= 1.0) {
+                    opacidadeFade = 1.0;
+                    // FIX: Direciona para o FADE_IN em vez de pular direto para a sala congelada
+                    subEstadoCinematica = "FADE_IN";
+                    tempoInicioCinematica = ts;
+                    caracteresVisiveisTexto = 0;
+                    tempoUltimoCaractereMina = ts;
+                }
+            } 
+            else if (subEstadoCinematica === "FADE_IN") {
+                opacidadeFade -= 0.02; 
+                if (opacidadeFade <= 0) {
+                    opacidadeFade = 0;
+                    subEstadoCinematica = "SALA_CONTROLE";
+                }
+            } 
+            else if (subEstadoCinematica === "SALA_CONTROLE") {
+                if (caracteresVisiveisTexto < textoCompletoMensagem.length) {
+                    if (ts - tempoUltimoCaractereMina > 45) {
+                        caracteresVisiveisTexto++;
+                        tempoUltimoCaractereMina = ts;
+                    }
+                }
+            }
+            return; 
+        }
+
+        if (!x_jogador.emSucao) {
+            estrelasFundo.forEach(est => {
+                est.y += est.vel;
+                if(est.y > canvas.height) { est.y = -10; est.x = Math.random() * canvas.width; }
+            });
+
+            cenario.y1 += cenario.velocidade; cenario.y2 += cenario.velocidade;
+            if (cenario.y1 >= canvas.height) cenario.y1 = -canvas.height;
+            if (cenario.y2 >= canvas.height) cenario.y2 = -canvas.height;
+        }
+
+        anguloRotacaoGeral += 0.05;
+
+        if (estadoJogo === "TRANSICAO") {
+            if (faseAtual === 1 && ts - tempoTransicao > 3500) { iniciarFase2(); } 
+            else if (faseAtual === 2 && ts - tempoTransicao > 3500) { iniciarFase3(); }
+            else if (faseAtual === 3 && ts - tempoTransicao > 3500) { iniciarFase4(); }
+            return;
+        }
+
+        if (estadoJogo !== "JOGANDO") { tremorCena = 0; return; }
+        if (tremorCena > 0) tremorCena -= 0.5;
+
+        if (x_jogador.emSucao) {
+            let bn = x_jogador.buracoSugador;
+            let centroNaveX = x_jogador.x + x_jogador.largura / 2;
+            let centroNaveY = x_jogador.y + x_jogador.altura / 2;
+            let distX = bn.x - centroNaveX; let distY = bn.y - centroNaveY;
+
+            x_jogador.x += distX * 0.05; x_jogador.y += distY * 0.05;
+            x_jogador.escala -= 0.0045; x_jogador.anguloMorte += 0.15;
+
+            if (x_jogador.escala <= 0.01) { x_jogador.vida = 0; estadoJogo = "GAMEOVER"; }
+            return; 
+        }
+
+        if (x_jogador.movendoEsquerda && x_jogador.x > 0) x_jogador.x -= x_jogador.velocidad;
+        if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidad;
+        if (x_jogador.movendoCima && x_jogador.y > 0) x_jogador.y -= x_jogador.velocidad;
+        if (x_jogador.movendoBaixo && x_jogador.y < painel.y - x_jogador.altura) x_jogador.y += x_jogador.velocidad;
+
+        for (let i = m_tiros_especiais.length - 1; i >= 0; i--) {
+            let m = m_tiros_especiais[i];
+            m.y -= m.vel;
+
+            if (faseAtual === 1 && bossAtivo && verificarColisao(m, {x: chefao.x, y: chefao.y, largura: chefao.largura, altura: chefao.altura}) && chefao.y > 0) {
+                instanciarExplosao(m.x, m.y, 60, 60);
+                chefao.vida -= chefao.vidaMax * 0.5; 
+                pontuacao += 1000;
+                m_tiros_especiais.splice(i, 1);
+                if (chefao.vida <= 0) {
+                    bossAtivo = false; bossMorrendo = true; tempoMorteBoss = ts; pontuacao += 5000; tocarSomExplosaoBoss(); 
+                }
+                continue;
+            }
+
+            if (faseAtual === 3 && dengosao.ativo && !dengosao.morrendo && verificarColisao(m, {x: dengosao.x, y: dengosao.y, largura: dengosao.largura, altura: dengosao.altura}) && dengosao.y > 0) {
+                instanciarExplosao(m.x, m.y, 80, 80);
+                dengosao.vida -= dengosao.vidaMax * 0.5; 
+                pontuacao += 2000;
+                m_tiros_especiais.splice(i, 1);
+                if (dengosao.vida <= 0) {
+                    dengosao.ativo = false; dengosao.morrendo = true; dengosao.tempoMorte = ts; pontuacao += 10000; tocarSomExplosaoBoss();
+                }
+                continue;
+            }
+
+            if (faseAtual === 4) {
+                let missilDestruido = false;
+                for (let aIdx = asteroides.length - 1; aIdx >= 0; aIdx--) {
+                    if (verificarColisao(m, asteroides[aIdx])) {
+                        instanciarExplosao(asteroides[aIdx].x, asteroides[aIdx].y, asteroides[aIdx].largura * 1.5, asteroides[aIdx].altura * 1.5);
+                        asteroides.splice(aIdx, 1);
+                        countAsteroidesProcessados++;
+                        pontuacao += 1000;
+                        missilDestruido = true;
+                        break;
+                    }
+                }
+                if (missilDestruido) {
+                    m_tiros_especiais.splice(i, 1);
+                    continue;
+                }
+            }
+
+            if (m.y + m.altura < 0) m_tiros_especiais.splice(i, 1);
+        }
+
+        for (let i = tiros.length - 1; i >= 0; i--) {
+            tiros[i].y -= tiros[i].vel;
+            
+            if (faseAtual === 1 && bossAtivo && verificarColisao(tiros[i], {x: chefao.x, y: chefao.y, largura: chefao.largura, altura: chefao.altura}) && chefao.y > 0) {
+                instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20); tiros.splice(i, 1); chefao.vida--; pontuacao += 50;
+                if (chefao.vida <= 0) {
+                    bossAtivo = false; bossMorrendo = true; tempoMorteBoss = ts; pontuacao += 5000; tocarSomExplosaoBoss(); 
+                }
+                continue;
+            }
+            
+            if (faseAtual === 3 && dengosao.ativo && !dengosao.morrendo && verificarColisao(tiros[i], {x: dengosao.x, y: dengosao.y, largura: dengosao.largura, altura: dengosao.altura}) && dengosao.y > 0) {
+                instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20); tiros.splice(i, 1); dengosao.vida--; pontuacao += 70;
+                if (dengosao.vida <= 0) {
+                    dengosao.ativo = false; dengosao.morrendo = true; dengosao.tempoMorte = ts; pontuacao += 10000; tocarSomExplosaoBoss();
+                }
+                continue;
+            }
+
+            if (faseAtual === 4) {
+                let tiroDestruido = false;
+                for (let aIdx = asteroides.length - 1; aIdx >= 0; aIdx--) {
+                    let ast = asteroides[aIdx];
+                    if (verificarColisao(tiros[i], ast)) {
+                        instanciarExplosao(tiros[i].x, tiros[i].y, 20, 20);
+                        tiros.splice(i, 1);
+                        tiroDestruido = true;
+                        
+                        ast.vida--;
+                        if (ast.vida <= 0) {
+                            instanciarExplosao(ast.x, ast.y, ast.largura, ast.altura);
+                            tentarDropPowerup(ast.x, ast.y);
+                            asteroides.splice(aIdx, 1);
+                            countAsteroidesProcessados++;
+                            
+                            if (ast.tipo === "asteroide_1") pontuacao += 200;
+                            else if (ast.tipo === "asteroide_2") pontuacao += 600;
+                            else if (ast.tipo === "asteroide_3") pontuacao += 1500;
+                        }
+                        break;
+                    }
+                }
+                if (tiroDestruido) continue;
+            }
+
+            if (tiros[i] && tiros[i].y + 25 < 0) tiros.splice(i, 1);
+        }
+
+        let delayCriacao = (faseAtual === 2) ? 450 : intervaloInimigos; 
+
+        if (ts - ultimoInimigoCriado > delayCriacao && faseAtual <= 2) {
+            if (faseAtual === 1 && !bossAtivo && !bossMorrendo) {
+                batedores.push({ tipo: 1, x: Math.random() * (canvas.width - 55), y: -55, largura: 55, altura: 55, velY: 3.5, ultTiro: ts });
+                ultimoInimigoCriado = ts;
+            } 
+            else if (faseAtual === 2) {
+                batedores.push({ 
+                    tipo: 2, x: Math.random() * (canvas.width - 60), y: -60, largura: 60, altura: 60, velY: 4.2, 
+                    ultTiro: ts, anguloGiro: Math.random() * 5, larguraZiguezague: 6
+                });
+                ultimoInimigoCriado = ts;
+            }
+        }
+
+        if (faseAtual === 2 && ts - ultimoDropBonusMagnetico > 5000) {
+            powerups.push({
+                x: Math.random() * (canvas.width - 30) + 15,
+                y: -30,
+                largura: 25,
+                altura: 25,
+                vel: 3.0,
+                tipo: "MISSIAL_AMARELO"
+            });
+            ultimoDropBonusMagnetico = ts;
+        }
+
+        if (faseAtual === 4 && ts - ultimoAsteroideCriado > 1100 && countAsteroidesProcessados < META_FIM_ASTEROIDES) {
+            let dadosSorteio = Math.random();
+            let nomeTipo = "asteroide_1";
+            let tam = 40; let rVida = 1; let velQueda = 4.5;
+
+            if (dadosSorteio >= 0.5 && dadosSorteio < 0.85) {
+                nomeTipo = "asteroide_2"; tam = 70; rVida = 5; velQueda = 3.5;
+            } else if (dadosSorteio >= 0.85) {
+                nomeTipo = "asteroide_3"; tam = 115; rVida = 10; velQueda = 2.5;
+            }
+
+            asteroides.push({
+                tipo: nomeTipo,
+                x: Math.random() * (canvas.width - tam - 20) + 10,
+                y: -tam - 10,
+                largura: tam,
+                altura: tam,
+                vida: rVida,
+                velY: velQueda,
+                angulo: Math.random() * Math.PI,
+                velRotacao: (Math.random() - 0.5) * 0.06
+            });
+            ultimoAsteroideCriado = ts;
+        }
+
+        for (let i = batedores.length - 1; i >= 0; i--) {
+            let b = batedores[i]; b.y += b.velY;
+
+            if (b.tipo === 2) {
+                b.anguloGiro += 0.12; b.x += Math.sin(b.anguloGiro) * b.larguraZiguezague;
+                if (b.x < 5) b.x = 5; if (b.x > canvas.width - b.largura - 5) b.x = canvas.width - b.largura - 5;
+            }
+
+            let recarga = b.tipo === 2 ? 1000 : 1400; 
+            if (ts - b.ultTiro > recarga && b.y < painel.y - 50 && b.y > 20) {
+                bolasMalditas.push({ x: b.x + b.largura/2 - 7, y: b.y + b.altura, largura: 14, altura: 14, vel: b.tipo === 2 ? 6.5 : 5.0 });
+                b.ultTiro = ts; 
+            }
+
+            for (let j = tiros.length - 1; j >= 0; j--) {
+                if (verificarColisao(tiros[j], b)) {
+                    instanciarExplosao(b.x, b.y, b.largura, b.altura); tentarDropPowerup(b.x, b.y);
+                    batedores.splice(i, 1); tiros.splice(j, 1); abates++; 
+                    pontuacao += b.tipo === 2 ? 300 : 150;
+
+                    if (faseAtual === 1 && abates >= META_CHEFÃO && !bossAtivo && !bossMorrendo) {
+                        bossAtivo = true; chefao.x = canvas.width / 2 - chefao.largura / 2;
+                    }
+                    break;
+                }
+            }
+            if (b && b.y > painel.y) batedores.splice(i, 1);
+        }
+
+        if (faseAtual === 1) {
+            if (bossMorrendo) {
+                if (Math.random() < 0.25) { instanciarExplosao(chefao.x + Math.random()*chefao.largura, chefao.y + Math.random()*100, 30, 30); }
+                if (ts - tempoMorteBoss > 3000) { bossMorrendo = false; estadoJogo = "TRANSICAO"; tempoTransicao = ts; }
+                return; 
+            }
+            if (bossAtivo) {
+                if (chefao.y < 60) chefao.y += chefao.velY;
+                else { chefao.x += chefao.velX; if (chefao.x <= 10 || chefao.x >= canvas.width - chefao.largura - 10) chefao.velX *= -1; }
+                if (ts - chefao.ultTiro > 850 && chefao.y > 0) {
+                    bolasMalditas.push({ x: chefao.x + 20, y: chefao.y + chefao.altura, largura: 16, altura: 16, vel: 6.5 });
+                    bolasMalditas.push({ x: chefao.x + chefao.largura - 36, y: chefao.y + chefao.altura, largura: 16, altura: 16, vel: 6.5 });
+                    chefao.ultTiro = ts;
+                }
+            }
+        }
+
+        if (faseAtual === 3) {
+            if (dengosao.morrendo) {
+                if (Math.random() < 0.30) { instanciarExplosao(dengosao.x + Math.random()*dengosao.largura, dengosao.y + Math.random()*dengosao.altura, 35, 35); }
+                if (ts - dengosao.tempoMorte > 3500) { 
+                    dengosao.morrendo = false; 
+                    estadoJogo = "TRANSICAO"; 
+                    tempoTransicao = ts;
+                }
+                return;
+            }
+
+            if (dengosao.ativo) {
+                if (dengosao.y < 70) { dengosao.y += dengosao.velY; } 
+                else { chefao.x = 0; dengosao.x += dengosao.velX; if (dengosao.x <= 10 || dengosao.x >= canvas.width - dengosao.largura - 10) dengosao.velX *= -1; }
+
+                if (ts - dengosao.ultTiroBola > 700 && dengosao.y > 0) {
+                    bolasMalditas.push({ x: dengosao.x + 15, y: dengosao.y + dengosao.altura, largura: 16, altura: 16, vel: 7.0 });
+                    bolasMalditas.push({ x: dengosao.x + dengosao.largura - 31, y: dengosao.y + dengosao.altura, largura: 16, altura: 16, vel: 7.0 });
+                    dengosao.ultTiroBola = ts;
+                }
+
+                if (ts - dengosao.ultTiroFerrao > 1500 && dengosao.y > 0) {
+                    ferroesInimigos.push({ x: dengosao.x + dengosao.largura / 2 - 4, y: dengosao.y + dengosao.altura - 10, largura: 10, altura: 35, vel: 9.5 });
+                    dengosao.ultTiroFerrao = ts;
+                }
+            }
+        }
+
+        if (faseAtual === 4) {
+            for (let i = asteroides.length - 1; i >= 0; i--) {
+                let ast = asteroides[i];
+                ast.y += ast.velY;
+                ast.angulo += ast.velRotacao;
+
+                if (verificarColisao(ast, x_jogador)) {
+                    instanciarExplosao(ast.x, ast.y, ast.largura, ast.altura);
+                    asteroides.splice(i, 1);
+                    x_jogador.vida = 0; 
+                    estadoJogo = "GAMEOVER";
+                    continue;
+                }
+
+                if (ast.y > painel.y) {
+                    asteroides.splice(i, 1);
+                    countAsteroidesProcessados++;
+                }
+            }
+
+            if (countAsteroidesProcessados >= META_FIM_ASTEROIDES && asteroides.length === 0) {
+                iniciarSequenciaEstacaoEspacial(ts);
+            }
+        }
+
+        for (let i = bolasMalditas.length - 1; i >= 0; i--) {
+            let bm = bolasMalditas[i]; bm.y += bm.vel;
+            if (verificarColisao(bm, x_jogador)) {
+                instanciarExplosao(bm.x, bm.y, 20, 20); bolasMalditas.splice(i, 1);
+                x_jogador.vida--; tremorCena = 10; 
+                if (x_jogador.vida <= 0) { estadoJogo = "GAMEOVER"; }
+                continue;
+            }
+            if (bm.y > painel.y) bolasMalditas.splice(i, 1);
+        }
+
+        for (let i = ferroesInimigos.length - 1; i >= 0; i--) {
+            let fr = ferroesInimigos[i]; fr.y += fr.vel;
+            if (verificarColisao(fr, x_jogador)) {
+                instanciarExplosao(fr.x, fr.y, 25, 25); ferroesInimigos.splice(i, 1);
+                x_jogador.vida -= 2; tremorCena = 20;
+                if (x_jogador.vida <= 0) { estadoJogo = "GAMEOVER"; }
+                continue;
+            }
+            if (fr.y > painel.y) ferroesInimigos.splice(i, 1);
+        }
+
+        if (faseAtual === 2) {
+            let todosPassaram = true;
+            for (let i = buracosNegros.length - 1; i >= 0; i--) {
+                let bn = buracosNegros[i]; bn.y += bn.velocidadeCair;
+                if (bn.y < painel.y + 100) todosPassaram = false;
+
+                let centroNaveX = x_jogador.x + x_jogador.largura / 2;
+                let centroNaveY = x_jogador.y + x_jogador.altura / 2;
+                let distancia = Math.sqrt(Math.pow(bn.x - centroNaveX, 2) + Math.pow(bn.y - centroNaveY, 2));
+
+                if (distancia <= bn.raioBoca && !x_jogador.emSucao) {
+                    x_jogador.emSucao = true; x_jogador.buracoSugador = bn; tocarSomSucao(); 
+                }
+                else if (distancia <= bn.raioAtracao && !x_jogador.emSucao) {
+                    if (centroNaveX < bn.x) x_jogador.x += 1.4; else x_jogador.x -= 1.4;
+                    if (centroNaveY < bn.y) x_jogador.y += 1.4; else x_jogador.y -= 1.4;
+                }
+            }
+            
+            if (todosPassaram && buracosNegros.length > 0 && !x_jogador.emSucao) {
+                estadoJogo = "TRANSICAO"; 
+                tempoTransition = ts; 
+                tempoTransicao = ts;
+            }
+        }
+
+        for (let i = powerups.length - 1; i >= 0; i--) {
+            powerups[i].y += powerups[i].vel;
+            if (verificarColisao(powerups[i], x_jogador)) {
+                if (powerups[i].tipo === "TIRO_DUPLO") x_jogador.tipoTiro = "DUPLO";
+                if (powerups[i].tipo === "VIDA") x_jogador.vida = Math.min(x_jogador.vidaMax, x_jogador.vida + 3);
+                
+                if (powerups[i].tipo === "MISSIAL_AMARELO") {
+                    qtdMisseis++;
+                }
+
+                powerups.splice(i, 1); continue;
+            }
+            if (powerups[i] && powerups[i].y > painel.y) powerups.splice(i, 1);
+        }
+
+        for (let i = explosoes.length - 1; i >= 0; i--) {
+            explosoes[i].vida--; if (explosoes[i].vida <= 0) explosoes.splice(i, 1);
+        }
+    }
+
+    // --- ENGINE GRÁFICA COMPLETA E RENDERIZADOR ---
+    function desenhar() {
+        ctx.save();
+        if (tremorCena > 0 && estadoJogo === "JOGANDO") {
+            ctx.translate((Math.random() - 0.5) * tremorCena, (Math.random() - 0.5) * tremorCena);
+        }
+
+        ctx.fillStyle = "#090912"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (imgFundo.complete && imgFundo.width > 0) {
+            ctx.drawImage(imgFundo, 0, cenario.y1, canvas.width, canvas.height);
+            ctx.drawImage(imgFundo, 0, cenario.y2, canvas.width, canvas.height);
+        } else {
+            ctx.fillStyle = "#ffffff"; estrelasFundo.forEach(est => { ctx.fillRect(est.x, est.y, est.tamanho, est.tamanho); });
+        }
+
+        if (faseAtual === 2 && (estadoJogo === "JOGANDO" || estadoJogo === "TRANSICAO")) {
+            buracosNegros.forEach(bn => {
+                ctx.save(); ctx.translate(bn.x, bn.y); ctx.rotate(anguloRotacaoGeral); 
+                let gradiente = ctx.createRadialGradient(0, 0, bn.raioBoca - 5, 0, 0, bn.raioAtracao);
+                gradiente.addColorStop(0, "rgba(15, 0, 30, 1)"); gradiente.addColorStop(0.3, "rgba(140, 0, 255, 0.45)");
+                gradiente.addColorStop(0.7, "rgba(0, 210, 255, 0.2)"); gradiente.addColorStop(1, "rgba(0, 0, 0, 0)");
+                ctx.fillStyle = gradiente; ctx.beginPath(); ctx.arc(0, 0, bn.raioAtracao, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "#000000"; ctx.beginPath(); ctx.arc(0, 0, bn.raioBoca, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = "#a200ff"; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+            });
+        }
+
+        if (estadoJogo === "JOGANDO" || estadoJogo === "TRANSICAO") {
+            powerups.forEach(p => {
+                if (p.tipo === "MISSIAL_AMARELO") {
+                    ctx.fillStyle = "#FFFF00"; ctx.beginPath(); ctx.arc(p.x + 12, p.y + 12, 12, 0, Math.PI*2); ctx.fill();
+                    ctx.strokeStyle = "#FF4500"; ctx.lineWidth = 3; ctx.stroke();
+                    ctx.fillStyle = "#000"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillText("M", p.x + 12, p.y + 12);
+                } else {
+                    ctx.fillStyle = p.tipo === "TIRO_DUPLO" ? "#00d2ff" : "#00ff66"; ctx.beginPath(); ctx.arc(p.x + 12, p.y + 12, 11, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillText(p.tipo === "TIRO_DUPLO" ? "D" : "V", p.x + 12, p.y + 12);
+                }
+            });
+
+            tiros.forEach(t => {
+                if (imgTiro.complete && imgTiro.width > 0) ctx.drawImage(imgTiro, t.x, t.y, t.largura, t.altura);
+                else { ctx.fillStyle = "#00ffcc"; ctx.fillRect(t.x, t.y, t.largura, t.altura); }
+            });
+
+            m_tiros_especiais.forEach(m => {
+                if (imgMissil.complete && imgMissil.width > 0) {
+                    // FIX: m.height corrigido para m.altura
+                    ctx.drawImage(imgMissil, m.x, m.y, m.largura, m.altura);
+                } else {
+                    ctx.fillStyle = "#FF3300";
+                    ctx.fillRect(m.x, m.y + 15, m.largura, m.altura - 15);
+                    ctx.fillStyle = "#FFCC00";
+                    ctx.beginPath();
+                    ctx.moveTo(m.x, m.y + 15);
+                    ctx.lineTo(m.x + m.largura / 2, m.y);
+                    ctx.lineTo(m.x + m.largura, m.y + 15);
+                    ctx.fill();
+                }
+            });
+
+            batedores.forEach(b => {
+                if (b.tipo === 2) {
+                    if (imgBatedor2.complete && imgBatedor2.width > 0) { ctx.drawImage(imgBatedor2, b.x, b.y, b.largura, b.altura); } 
+                    else { ctx.fillStyle = "#a600ff"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
+                } else {
+                    if (imgBatedor.complete && imgBatedor.width > 0) ctx.drawImage(imgBatedor, b.x, b.y, b.largura, b.altura);
+                    else { ctx.fillStyle = "#ff2244"; ctx.fillRect(b.x, b.y, b.largura, b.altura); }
+                }
+            });
+
+            if (faseAtual === 4) {
+                asteroides.forEach(ast => {
+                    ctx.save();
+                    ctx.translate(ast.x + ast.largura / 2, ast.y + ast.altura / 2);
+                    ctx.rotate(ast.angulo);
+
+                    if (ast.tipo === "asteroide_1" && imgAsteroide1.complete && imgAsteroide1.width > 0) {
+                        ctx.drawImage(imgAsteroide1, -ast.largura / 2, -ast.altura / 2, ast.largura, ast.altura);
+                    } else if (ast.tipo === "asteroide_2" && imgAsteroide2.complete && imgAsteroide2.width > 0) {
+                        ctx.drawImage(imgAsteroide2, -ast.largura / 2, -ast.altura / 2, ast.largura, ast.altura);
+                    } else if (ast.tipo === "asteroide_3" && imgAsteroide3.complete && imgAsteroide3.width > 0) {
+                        ctx.drawImage(imgAsteroide3, -ast.largura / 2, -ast.altura / 2, ast.largura, ast.altura);
+                    } else {
+                        ctx.fillStyle = ast.tipo === "asteroide_3" ? "#52433d" : (ast.tipo === "asteroide_2" ? "#736057" : "#9c857a");
+                        ctx.fillRect(-ast.largura / 2, -ast.altura / 2, ast.largura, ast.altura);
+                    }
+                    ctx.restore();
+
+                    if (ast.tipo !== "asteroide_1") {
+                        let maxV = ast.tipo === "asteroide_3" ? 10 : 5;
+                        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(ast.x, ast.y - 7, ast.largura, 4);
+                        ctx.fillStyle = "#ffaa00"; ctx.fillRect(ast.x, ast.y - 7, (ast.vida / maxV) * ast.largura, 4);
+                    }
+                });
+            }
+
+            if (faseAtual === 1 && (bossAtivo || bossMorrendo)) {
+                if (imgChefao.complete && imgChefao.width > 0) ctx.drawImage(imgChefao, chefao.x, chefao.y, chefao.largura, chefao.altura);
+                else { ctx.fillStyle = "#7a3311"; ctx.fillRect(chefao.x, chefao.y, chefao.largura, chefao.altura); }
+                if (bossAtivo) {
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(canvas.width/2 - 100, 15, 200, 8);
+                    ctx.fillStyle = "#ff0044"; ctx.fillRect(canvas.width/2 - 100, 15, (chefao.vida / chefao.vidaMax) * 200, 8);
+                }
+            }
+
+            if (faseAtual === 3 && (dengosao.ativo || dengosao.morrendo)) {
+                if (imgDengosao.complete && imgDengosao.width > 0) { ctx.drawImage(imgDengosao, dengosao.x, dengosao.y, dengosao.largura, dengosao.altura); } 
+                else { ctx.fillStyle = "#2e5a1c"; ctx.fillRect(dengosao.x, dengosao.y, dengosao.largura, dengosao.altura); }
+                if (dengosao.ativo) {
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(canvas.width/2 - 100, 15, 200, 8);
+                    ctx.fillStyle = "#00ff66"; ctx.fillRect(canvas.width/2 - 100, 15, (dengosao.vida / dengosao.vidaMax) * 200, 8);
+                }
+            }
+
+            bolasMalditas.forEach(bm => {
+                if (imgBolaMaldita.complete && imgBolaMaldita.width > 0) ctx.drawImage(imgBolaMaldita, bm.x, bm.y, bm.largura, bm.altura);
+                else { ctx.fillStyle = "#ffcc00"; ctx.beginPath(); ctx.arc(bm.x+7, bm.y+7, 7, 0, Math.PI*2); ctx.fill(); }
+            });
+
+            ferroesInimigos.forEach(fr => {
+                if (imgFerrao.complete && imgFerrao.width > 0) { ctx.drawImage(imgFerrao, fr.x, fr.y, fr.largura, fr.altura); } 
+                else { ctx.fillStyle = "#ff4500"; ctx.fillRect(fr.x, fr.y, fr.largura, fr.altura); }
+            });
+        }
+
+        if (estadoJogo === "JOGANDO" || x_jogador.emSucao || (estadoJogo === "CINEMATICA_FINAL" && subEstadoCinematica === "PILOTO_AUTOMATICO")) {
+            ctx.save(); let cX = x_jogador.x + x_jogador.largura / 2; let cY = x_jogador.y + x_jogador.altura / 2;
+            ctx.translate(cX, cY); ctx.scale(x_jogador.escala, x_jogador.escala); ctx.rotate(x_jogador.anguloMorte); 
+            
+            if (imgNave.complete && imgNave.width > 0) ctx.drawImage(imgNave, -x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura);
+            else { ctx.fillStyle = "#00d2ff"; ctx.fillRect(-x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura); }
+            ctx.restore();
+        }
+
+        if (estadoJogo === "CINEMATICA_ORION") {
+            if (subEstadoOrion === "COCKPIT_DIMINUINDO") {
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.scale(escalaCockpitOrion, escalaCockpitOrion);
+                if (imgCockpit.complete && imgCockpit.width > 0) {
+                    ctx.drawImage(imgCockpit, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+                } else {
+                    ctx.fillStyle = "rgba(0, 210, 255, 0.3)";
+                    ctx.fillRect(-canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+                }
+                ctx.restore();
+            } else if (subEstadoOrion === "NAVE_DIMINUINDO") {
+                ctx.save();
+                let nX = canvas.width / 2;
+                let nY = canvas.height / 2 + 100;
+                ctx.translate(nX, nY);
+                ctx.scale(escalaNaveOrion, escalaNaveOrion);
+                if (imgNave.complete && imgNave.width > 0) {
+                    ctx.drawImage(imgNave, -x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura);
+                } else {
+                    ctx.fillStyle = "#00d2ff";
+                    ctx.fillRect(-x_jogador.largura / 2, -x_jogador.altura / 2, x_jogador.largura, x_jogador.altura);
+                }
+                ctx.restore();
+            }
+        }
+
+        if (estadoJogo === "JOGANDO") {
+            explosoes.forEach(ex => {
+                ctx.fillStyle = "rgba(255, 90, 0, " + (ex.vida / ex.vidaMax) + ")";
+                ctx.beginPath(); ctx.arc(ex.x + ex.largura/2, ex.y + ex.altura/2, ex.largura * 1.5, 0, Math.PI*2); ctx.fill();
+            });
+
+            ctx.fillStyle = "rgba(255, 255, 255, 0.12)"; ctx.fillRect(25, 25, 120, 12);
+            if (x_jogador.vida > 0) {
+                ctx.fillStyle = x_jogador.vida > 4 ? "#00d2ff" : "#ff2244";
+                ctx.fillRect(25, 25, (x_jogador.vida / x_jogador.vidaMax) * 120, 12);
+            }
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.35)"; ctx.strokeRect(25, 25, 120, 12);
+
+            ctx.fillStyle = "#fff"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "left";
+            ctx.fillText("SCORE: " + pontuacao, 25, 52);
+            
+            ctx.fillStyle = "#FFFF00";
+            ctx.fillText("🚀 MÍSSEIS: " + qtdMisseis, 25, 68);
+            
+            ctx.fillStyle = "#fff"; ctx.font = "11px sans-serif";
+            let subTextoFase = "Fase 1: Combate Viral";
+            if (faseAtual === 2) subTextoFase = "Fase 2: Zona Magnética ⚡";
+            if (faseAtual === 3) subTextoFase = "Fase 3: O Ninho do Dengosão";
+            if (faseAtual === 4) subTextoFase = "Fase 4: Campo de Asteroides ☄️";
+            ctx.fillText(subTextoFase, 25, 84);
+
+            ctx.fillStyle = "rgba(255, 255, 255, 0.22)"; ctx.font = "24px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText("▲", painel.btnCima.x + 45, painel.btnCima.y + 45);
+            ctx.fillText("◀️", painel.btnEsq.x + 45, painel.btnEsq.y + 45);
+            ctx.fillText("▶️", painel.btnDir.x + 45, painel.btnDir.y + 45);
+            ctx.fillText("▼", painel.btnBaixo.x + 45, painel.btnBaixo.y + 45);
+
+            ctx.fillStyle = "rgba(255, 0, 70, 0.75)"; ctx.beginPath(); ctx.arc(painel.btnAtirar.x, painel.btnAtirar.y, painel.btnAtirar.raio, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = "rgba(255, 0, 70, 0.9)"; ctx.lineWidth = 2; ctx.stroke();
+        }
+
+        if (estadoJogo === "CINEMATICA_FINAL") {
+            
+            if (subEstadoCinematica === "VISAO_COCKPIT") {
+                if (imgBaseEspacial.complete && imgBaseEspacial.width > 0) {
+                    ctx.save();
+                    ctx.translate(canvas.width / 2, canvas.height / 2 - 50);
+                    ctx.scale(escalaBaseEspacial, escalaBaseEspacial);
+                    ctx.drawImage(imgBaseEspacial, -imgBaseEspacial.width / 2, -imgBaseEspacial.height / 2);
+                    ctx.restore();
+                } else {
+                    ctx.fillStyle = "#334466";
+                    ctx.beginPath();
+                    ctx.arc(canvas.width / 2, canvas.height / 2 - 50, escalaBaseEspacial * 120, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                if (imgCockpit.complete && imgCockpit.width > 0) {
+                    ctx.drawImage(imgCockpit, 0, 0, canvas.width, canvas.height);
+                } else {
+                    ctx.fillStyle = "rgba(0, 210, 255, 0.15)";
+                    ctx.fillRect(0, canvas.height - 220, canvas.width, 220);
+                    ctx.fillStyle = "#00d2ff"; ctx.font = "12px sans-serif"; ctx.textAlign = "center";
+                    ctx.fillText("[ SISTEMA DE COCKPIT ATIVO ]", canvas.width / 2, canvas.height - 50);
+                }
+
+                ctx.fillStyle = "#00ffcc"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText("🛰️ PILOTO AUTOMÁTICO: APROXIMAÇÃO DA DOCA ESTAÇÃO ESPACIAL", canvas.width / 2, 40);
+            }
+
+            if (subEstadoCinematica === "SALA_CONTROLE" || subEstadoCinematica === "FADE_IN" || subEstadoCinematica === "FADE_OUT") {
+                if (imgSalaControle.complete && imgSalaControle.width > 0) {
+                    ctx.drawImage(imgSalaControle, 0, 0, canvas.width, canvas.height);
+                } else {
+                    ctx.fillStyle = "#0d1026"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = "rgba(0, 255, 200, 0.05)"; ctx.fillRect(30, 100, canvas.width - 60, canvas.height - 200);
+                }
+
+                ctx.fillStyle = "rgba(0, 5, 20, 0.82)"; 
+                ctx.fillRect(0, 0, canvas.width, 160);
+                ctx.strokeStyle = "#00ffcc"; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(0, 160); ctx.lineTo(canvas.width, 160); ctx.stroke();
+
+                let textoParaExibir = textoCompletoMensagem.substring(0, caracteresVisiveisTexto);
+                ctx.fillStyle = "#00ffcc"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
+                
+                escreverTextoBlocoQuebrado(ctx, textoParaExibir,
