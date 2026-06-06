@@ -45,6 +45,48 @@
             image-rendering: crisp-edges;
         }
     </style>
+	<script>
+    // 1. Desabilita o clique com o botão direito (Menu de Contexto)
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        alert("© Ferratech ASH - Conteúdo protegido por direitos autorais.");
+    });
+
+    // 2. Desabilita atalhos de teclado comuns para cópia e inspeção
+    document.addEventListener('keydown', function(e) {
+        // Bloqueia Ctrl+C (Copiar)
+        if (e.ctrlKey && e.key === 'c') {
+            e.preventDefault();
+            return false;
+        }
+        
+        // Bloqueia Ctrl+U (Ver Código Fonte)
+        if (e.ctrlKey && e.key === 'u') {
+            e.preventDefault();
+            return false;
+        }
+
+        // Bloqueia Ctrl+Shift+I ou F12 (Inspecionar Elemento / Ferramentas do Desenvolvedor)
+        if ((e.ctrlKey && e.shiftKey && e.key === 'I') || e.key === 'F12') {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // 3. Desabilita a seleção de texto por segurança extra via script
+    document.addEventListener('selectstart', function(e) {
+        e.preventDefault();
+    });
+</script>
+
+<style>
+    body {
+        -webkit-user-select: none;  /* Safari */
+        -moz-user-select: none;     /* Firefox */
+        -ms-user-select: none;      /* IE10+ */
+        user-select: none;          /* Padrão */
+    }
+</style>
 </head>
 <body>
 
@@ -79,10 +121,27 @@
     
     const imgMissil = new Image(); imgMissil.src = "m_2.png"; 
 
+    // --- NOVO INTERCAMBIO: MECÂNICA DE MOEDAS ESPECIAIS ---
+    let inimigosAbatidosContador = 0;
+    let moedasEspeciais = [];
+    // Objeto ponte global para conversar diretamente com o módulo isolado da mochila
+    window.MochilaIntercambio = {
+        forçarGatilho: null
+    };
+
     const estrelasFundo = [];
     for(let i = 0; i < 40; i++) {
         estrelasFundo.push({ x: Math.random() * 400, y: Math.random() * 800, tamanho: Math.random() * 2 + 1, vel: Math.random() * 2 + 1 });
     }
+
+    // Estrelas raras de alto brilho para a cinemática de viagem
+    const estrelasEspeciais = [];
+    for(let i = 0; i < 8; i++) {
+        estrelasEspeciais.push({ x: 0, y: 0, brilho: Math.random(), fator: 0.02 + Math.random()*0.03 });
+    }
+
+    // Variáveis do Planeta de fundo na Cinemática (Customizado para a trajetória parabólica lateral)
+    const planetaCinematica = { x: 0, y: 0, inicialX: 0, inicialY: 0, raio: 1, ativo: false };
 
     // Funções de Áudio
     function tocarSomTiro() {
@@ -143,10 +202,12 @@
     let faseLuzOrion = "ESCURECENDO"; 
     let tempoInicioOrion = 0;
 
-    // Cinemática Final
+    // Cinemática Final Reestruturada (Ajustada para 18 segundos de percurso glamouroso)
     let subEstadoCinematica = "PILOTO_AUTOMATICO"; 
     let tempoInicioCinematica = 0;
-    let escalaBaseEspacial = 0.05; 
+    let escalaBaseEspacial = 0.01; 
+    let baseEspacialX = 0;
+    let baseEspacialY = 0;
     let opacidadeFade = 0;
     let textoCompletoMensagem = "Parabéns, Comandante Mauro, pela gloriosa vitória sobre as forças do Coronavírus e do Dengozão! O quadrante está seguro graças a você. Agora, junte-se a nós na Sala de Comando... Vamos decidir a próxima estratégia de defesa!";
     let caracteresVisiveisTexto = 0;
@@ -189,7 +250,6 @@
         vidaMax: 30, vida: 30, ultTiro: 0
     };
 
-    // 🔧 CIRCUITO CORRIGIDO: Objeto reconstruído e sem cortes na sintaxe
     const dengosao = {
         x: 0, y: -150, largura: 160, altura: 120, velX: 4.5, velY: 1.2,
         vidaMax: 60, vida: 60, ultTiroBola: 0, ultTiroFerrao: 0, 
@@ -227,6 +287,12 @@
 
         estrelasFundo.forEach(est => est.x = Math.random() * canvas.width);
 
+        // Inicializa as posições fixas das estrelas brilhantes da cinemática
+        estrelasEspeciais.forEach(est => {
+            est.x = Math.random() * canvas.width;
+            est.y = Math.random() * (canvas.height * 0.40); // Espaço visível superior
+        });
+
         if (x_jogador.x === 0 || x_jogador.y === 0) {
             x_jogador.x = canvas.width / 2 - x_jogador.largura / 2;
             x_jogador.y = painel.y - x_jogador.altura - 30;
@@ -250,6 +316,7 @@
 
         pontuacao = 0; abates = 0; faseAtual = 1; countAsteroidesProcessados = 0;
         bossAtivo = false; bossMorrendo = false; tremorCena = 0;
+        inimigosAbatidosContador = 0; moedasEspeciais.length = 0;
         dengosao.ativo = false; dengosao.morrendo = false; dengosao.vida = dengosao.vidaMax; dengosao.y = -150;
         x_jogador.vida = x_jogador.vidaMax; x_jogador.tipoTiro = "NORMAL";
         x_jogador.escala = 1; x_jogador.emSucao = false; x_jogador.buracoSugador = null; x_jogador.anguloMorte = 0;
@@ -274,9 +341,10 @@
         tempoInicioOrion = performance.now();
 
         subEstadoCinematica = "PILOTO_AUTOMATICO";
-        escalaBaseEspacial = 0.05;
+        escalaBaseEspacial = 0.01;
         opacidadeFade = 0;
         caracteresVisiveisTexto = 0;
+        planetaCinematica.ativo = false;
 
         if (audioSucao) { audioSucao.pause(); audioSucao.currentTime = 0; }
     }
@@ -314,6 +382,19 @@
         x_jogador.movendoEsquerda = false; x_jogador.movendoDireita = false;
         x_jogador.movendoCima = false; x_jogador.movendoBaixo = false;
         tiros.length = 0; bolasMalditas.length = 0; asteroides.length = 0; m_tiros_especiais.length = 0;
+        
+        // Configurações do Planeta surgindo no horizonte (ponto de fuga central nos 45% superiores)
+        planetaCinematica.inicialX = canvas.width / 2;
+        planetaCinematica.inicialY = (canvas.height * 0.45) / 2;
+        planetaCinematica.x = planetaCinematica.inicialX;
+        planetaCinematica.y = planetaCinematica.inicialY;
+        planetaCinematica.raio = 2; // Começa como um pontinho
+        planetaCinematica.ativo = true;
+
+        // Configurações Iniciais da Base Espacial (Pontinho azul central e discreto)
+        escalaBaseEspacial = 0.005;
+        baseEspacialX = canvas.width / 2;
+        baseEspacialY = (canvas.height * 0.45) / 2;
     }
 
     function verificarColisao(a, b) {
@@ -507,33 +588,84 @@
             return;
         }
 
+        // --- ATUALIZAÇÃO REESTRUTURADA: CINEMÁTICA FINAL (18 SEGUNDOS TOTAIS) ---
         if (estadoJogo === "CINEMATICA_FINAL") {
-            estrelasFundo.forEach(est => {
-                est.y += est.vel * 0.3;
-                if(est.y > canvas.height) { est.y = -10; est.x = Math.random() * canvas.width; }
+            estrelasEspeciais.forEach(est => {
+                est.brilho += est.fator;
+                if(est.brilho > 1 || est.brilho < 0.2) est.fator *= -1;
             });
 
+            let tempoDecorrido = ts - tempoInicioCinematica;
+
             if (subEstadoCinematica === "PILOTO_AUTOMATICO") {
+                estrelasFundo.forEach(est => {
+                    est.y += est.vel * 6;
+                    if(est.y > canvas.height) { est.y = -10; est.x = Math.random() * canvas.width; }
+                });
+
                 let centroAlinhadoX = canvas.width / 2 - x_jogador.largura / 2;
                 x_jogador.x += (centroAlinhadoX - x_jogador.x) * 0.05;
-                x_jogador.y -= 1.8; 
-                x_jogador.escala += 0.025; 
+                x_jogador.y -= 3.5; 
+                x_jogador.escala += 0.04; 
 
-                if (x_jogador.y + (x_jogador.altura * x_jogador.escala) < 0 || x_jogador.escala > 4.5) {
-                    subEstadoCinematica = "VISAO_COCKPIT";
-                    escalaBaseEspacial = 0.05; 
-                    tempoInicioCinematica = ts;
+                // Transiciona o cockpit quando a nave avança completamente para fora da tela
+                if (x_jogador.y + (x_jogador.altura * x_jogador.escala) < 0) {
+                    subEstadoCinematica = "PERCURSO_GLAMOUROSO";
+                    tempoInicioCinematica = ts; // Reinicia o cronômetro para os 18 segundos
                 }
             } 
-            else if (subEstadoCinematica === "VISAO_COCKPIT") {
-                if (escalaBaseEspacial < 1.0) {
-                    escalaBaseEspacial += 0.0035; 
+            else if (subEstadoCinematica === "PERCURSO_GLAMOUROSO") {
+                // Rolagem do plano de fundo sutil e controlada
+                estrelasFundo.forEach(est => {
+                    est.y += est.vel * 0.4;
+                    if(est.y > canvas.height) { est.y = -10; est.x = Math.random() * canvas.width; }
+                });
+
+                // Proporção do tempo decorrido dentro da janela de 18 segundos (18000ms)
+                let pct = Math.min(1, tempoDecorrido / 18000);
+
+                // --- FÍSICA E MOVIMENTO DO PLANETA ---
+                // Ele nasce no ponto de fuga central e faz uma curva estilosa saindo pela direita do para-brisa
+                if (planetaCinematica.ativo) {
+                    // Crescimento progressivo e robusto do tamanho
+                    planetaCinematica.raio = 2 + (pct * 260); 
+                    
+                    // Movimento de fuga em direção ao canto direito da tela
+                    let destinoPlanetaX = canvas.width + planetaCinematica.raio + 40;
+                    let destinoPlanetaY = (canvas.height * 0.45) * 0.7; // Mantém dentro do para-brisa superior
+                    
+                    planetaCinematica.x = planetaCinematica.inicialX + (destinoPlanetaX - planetaCinematica.inicialX) * Math.pow(pct, 1.5);
+                    planetaCinematica.y = planetaCinematica.inicialY + (destinoPlanetaY - planetaCinematica.inicialY) * pct;
+
+                    // Desativa o planeta quando ele vazar totalmente da visão do jogador
+                    if (planetaCinematica.x - planetaCinematica.raio > canvas.width) {
+                        planetaCinematica.ativo = false;
+                    }
+                }
+
+                // --- FÍSICA E ESCALA DA BASE ESPACIAL (Cresce continuamente de longe) ---
+                // Começa como um pontinho azul microscópico no horizonte (0.005) e vai expandindo gradualmente
+                if (pct < 0.92) {
+                    // Crescimento suave exponencial para dar efeito de aceleração real no fim
+                    escalaBaseEspacial = 0.005 + Math.pow(pct, 3.2) * 0.995;
+                    
+                    // Centraliza ela no ponto de fuga, ajustando para crescer a partir do seu próprio meio geométrico
+                    baseEspacialX = canvas.width / 2;
+                    baseEspacialY = (canvas.height * 0.45) / 2 + (pct * 40); // Desce sutilmente simulando alinhamento da Doca
                 } else {
+                    // Trava no tamanho completo nos instantes finais da acoplagem
+                    escalaBaseEspacial = 1.0;
+                    baseEspacialX = canvas.width / 2;
+                    baseEspacialY = (canvas.height * 0.45) / 2 + 40;
+                }
+
+                // Quando completar os 18 segundos de animação pura, dispara o Fade Out
+                if (tempoDecorrido >= 18000) {
                     subEstadoCinematica = "FADE_OUT";
                     tempoInicioCinematica = ts;
                     opacidadeFade = 0;
                 }
-            } 
+            }
             else if (subEstadoCinematica === "FADE_OUT") {
                 opacidadeFade += 0.025; 
                 if (opacidadeFade >= 1.0) {
@@ -602,6 +734,24 @@
         if (x_jogador.movendoDireita && x_jogador.x < canvas.width - x_jogador.largura) x_jogador.x += x_jogador.velocidad;
         if (x_jogador.movendoCima && x_jogador.y > 0) x_jogador.y -= x_jogador.velocidad;
         if (x_jogador.movendoBaixo && x_jogador.y < painel.y - x_jogador.altura) x_jogador.y += x_jogador.velocidad;
+
+        // --- DINÂMICA DA QUEDA E COLISÃO DAS MOEDAS ESPECIAIS ---
+        for (let i = moedasEspeciais.length - 1; i >= 0; i--) {
+            let moeda = moedasEspeciais[i];
+            moSurface = moedasEspeciais[i];
+            moeda.y += moeda.velQueda;
+
+            if (verificarColisao(moeda, x_jogador)) {
+                if (typeof window.MochilaIntercambio.forçarGatilho === "function") {
+                    window.MochilaIntercambio.forçarGatilho();
+                }
+                moedasEspeciais.splice(i, 1);
+                continue;
+            }
+            if (moeda.y > painel.y) {
+                moedasEspeciais.splice(i, 1);
+            }
+        }
 
         for (let i = m_tiros_especiais.length - 1; i >= 0; i--) {
             let m = m_tiros_especiais[i];
@@ -757,6 +907,19 @@
             for (let j = tiros.length - 1; j >= 0; j--) {
                 if (verificarColisao(tiros[j], b)) {
                     instanciarExplosao(b.x, b.y, b.largura, b.altura); tentarDropPowerup(b.x, b.y);
+                    
+                    inimigosAbatidosContador++;
+                    if (inimigosAbatidosContador >= 10) {
+                        inimigosAbatidosContador = 0;
+                        moedasEspeciais.push({
+                            x: b.x + b.largura / 2 - 10,
+                            y: b.y,
+                            largura: 20,
+                            altura: 20,
+                            velQueda: 2.8
+                        });
+                    }
+
                     batedores.splice(i, 1); tiros.splice(j, 1); abates++; 
                     pontuacao += b.tipo === 2 ? 300 : 150;
 
@@ -876,7 +1039,7 @@
         for (let i = powerups.length - 1; i >= 0; i--) {
             powerups[i].y += powerups[i].vel;
             if (verificarColisao(powerups[i], x_jogador)) {
-                if (powerups[i].tipo === "TIRO_DUPLO") x_jogador.tipoTiro = "DUPLO";
+                if (powerups[i].tipo === "TIRO_DUPLO" ? x_jogador.tipoTiro = "DUPLO" : null);
                 if (powerups[i].tipo === "VIDA") x_jogador.vida = Math.min(x_jogador.vidaMax, x_jogador.vida + 3);
                 if (powerups[i].tipo === "MISSIAL_AMARELO") qtdMisseis++;
                 powerups.splice(i, 1); continue;
@@ -922,7 +1085,7 @@
                 if (p.tipo === "MISSIAL_AMARELO") {
                     ctx.fillStyle = "#FFFF00"; ctx.beginPath(); ctx.arc(p.x + 12, p.y + 12, 12, 0, Math.PI*2); ctx.fill();
                     ctx.strokeStyle = "#FF4500"; ctx.lineWidth = 3; ctx.stroke();
-                    ctx.fillStyle = "#000"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#00 Papa"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
                     ctx.fillText("M", p.x + 12, p.y + 12);
                 } else {
                     ctx.fillStyle = p.tipo === "TIRO_DUPLO" ? "#00d2ff" : "#00ff66"; ctx.beginPath(); ctx.arc(p.x + 12, p.y + 12, 11, 0, Math.PI*2); ctx.fill();
@@ -944,6 +1107,17 @@
                     ctx.fillStyle = "#FFCC00"; ctx.beginPath();
                     ctx.moveTo(m.x, m.y + 15); ctx.lineTo(m.x + m.largura / 2, m.y); ctx.lineTo(m.x + m.largura, m.y + 15); ctx.fill();
                 }
+            });
+
+            moedasEspeciais.forEach(m => {
+                ctx.beginPath();
+                ctx.arc(m.x + m.largura/2, m.y + m.altura/2, m.largura/2, 0, Math.PI * 2);
+                ctx.fillStyle = "#FFD700"; 
+                ctx.fill();
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = "#FFFFFF"; 
+                ctx.stroke();
+                ctx.closePath();
             });
 
             batedores.forEach(b => {
@@ -1073,30 +1247,78 @@
             ctx.strokeStyle = "rgba(255, 0, 70, 0.9)"; ctx.lineWidth = 2; ctx.stroke();
         }
 
+        // --- RENDERIZAÇÃO DA CINEMÁTICA FINAL REESTRUTURADA E OTIMIZADA ---
         if (estadoJogo === "CINEMATICA_FINAL") {
-            if (subEstadoCinematica === "VISAO_COCKPIT") {
+            if (subEstadoCinematica === "PERCURSO_GLAMOUROSO" || subEstadoCinematica === "FADE_OUT") {
+                
+                // 1. Renderiza Estrelas Brilhantes fixas oscilando no fundo
+                estrelasEspeciais.forEach(est => {
+                    ctx.fillStyle = "rgba(255, 255, 255, " + est.brilho + ")";
+                    ctx.beginPath();
+                    ctx.fillRect(est.x - 4, est.y - 1, 9, 3);
+                    ctx.fillRect(est.x - 1, est.y - 4, 3, 9);
+                    ctx.fill();
+                });
+
+                // 2. Desenha o Planeta passando se ele estiver ativo (Camada atrás da base)
+                if (planetaCinematica.ativo) {
+                    let gradPlaneta = ctx.createRadialGradient(
+                        planetaCinematica.x - (planetaCinematica.raio * 0.25), 
+                        planetaCinematica.y - (planetaCinematica.raio * 0.25), 
+                        planetaCinematica.raio * 0.1,
+                        planetaCinematica.x, planetaCinematica.y, planetaCinematica.raio
+                    );
+                    gradPlaneta.addColorStop(0, "#4a2a75");
+                    gradPlaneta.addColorStop(0.6, "#21113b");
+                    gradPlaneta.addColorStop(1, "#05020c");
+                    
+                    ctx.fillStyle = gradPlaneta;
+                    ctx.beginPath();
+                    ctx.arc(planetaCinematica.x, planetaCinematica.y, planetaCinematica.raio, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = "rgba(162, 0, 255, 0.35)";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // 3. Desenha a Base Espacial aproximando-se dinamicamente bem no centro
+                ctx.save();
+                ctx.translate(baseEspacialX, baseEspacialY);
+                ctx.scale(escalaBaseEspacial, escalaBaseEspacial);
+                
                 if (imgBaseEspacial.complete && imgBaseEspacial.width > 0) {
-                    ctx.save(); ctx.translate(canvas.width / 2, canvas.height / 2 - 50); ctx.scale(escalaBaseEspacial, escalaBaseEspacial);
-                    ctx.drawImage(imgBaseEspacial, -imgBaseEspacial.width / 2, -imgBaseEspacial.height / 2); ctx.restore();
+                    ctx.drawImage(imgBaseEspacial, -imgBaseEspacial.width / 2, -imgBaseEspacial.height / 2);
                 } else {
-                    ctx.fillStyle = "#334466"; ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height / 2 - 50, escalaBaseEspacial * 120, 0, Math.PI * 2); ctx.fill();
+                    // Fallback visual com brilho azul se a imagem não carregar
+                    let gradBase = ctx.createRadialGradient(0, 0, 5, 0, 0, 100);
+                    gradBase.addColorStop(0, "#00d2ff");
+                    gradBase.addColorStop(0.5, "#0044ff");
+                    gradBase.addColorStop(1, "rgba(0,0,0,0)");
+                    ctx.fillStyle = gradBase;
+                    ctx.beginPath(); ctx.arc(0, 0, 100, 0, Math.PI * 2); ctx.fill();
                 }
-                if (imgCockpit.complete && imgCockpit.width > 0) { ctx.drawImage(imgCockpit, 0, 0, canvas.width, canvas.height); } 
-                else {
+                ctx.restore();
+                
+                // 4. Renderiza o Cockpit fixo em primeiro plano (Cobre o fundo perfeitamente)
+                if (imgCockpit.complete && imgCockpit.width > 0) { 
+                    ctx.drawImage(imgCockpit, 0, 0, canvas.width, canvas.height); 
+                } else {
                     ctx.fillStyle = "rgba(0, 210, 255, 0.15)"; ctx.fillRect(0, canvas.height - 220, canvas.width, 220);
-                    ctx.fillStyle = "#00d2ff"; ctx.font = "12px sans-serif"; ctx.textAlign = "center"; ctx.fillText("[ SISTEMA DE COCKPIT ATIVO ]", canvas.width / 2, canvas.height - 50);
                 }
-                ctx.fillStyle = "#00ffcc"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
-                ctx.fillText("🛰️ PILOTO AUTOMÁTICO: APROXIMAÇÃO DA DOCA ESTAÇÃO ESPACIAL", canvas.width / 2, 40);
+                
+                // Texto de Status da Viagem de Volta
+                ctx.fillStyle = "#00ffcc"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText("🛰️ DOCAGEM: RETORNANDO PELO PARABRISA DA DIREITA", canvas.width / 2, 40);
             }
 
-            if (subEstadoCinematica === "SALA_CONTROLE" || subEstadoCinematica === "FADE_IN" || subEstadoCinematica === "FADE_OUT") {
+            if (subEstadoCinematica === "SALA_CONTROLE" || subEstadoCinematica === "FADE_IN") {
                 if (imgSalaControle.complete && imgSalaControle.width > 0) { ctx.drawImage(imgSalaControle, 0, 0, canvas.width, canvas.height); } 
                 else {
                     ctx.fillStyle = "#0d1026"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = "rgba(0, 255, 200, 0.05)"; ctx.fillRect(30, 100, canvas.width - 60, canvas.height - 200);
                 }
-                ctx.fillStyle = "rgba(0, 5, 20, 0.82)"; ctx.fillRect(0, 0, canvas.width, 160);
+                
+                ctx.fillStyle = "rgba(5, 5, 25, 0.85)"; ctx.fillRect(0, 0, canvas.width, 160);
                 ctx.strokeStyle = "#00ffcc"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, 160); ctx.lineTo(canvas.width, 160); ctx.stroke();
 
                 let textoParaExibir = textoCompletoMensagem.substring(0, caracteresVisiveisTexto);
@@ -1120,7 +1342,8 @@
             ctx.fillStyle = "rgba(5, 0, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#00ffcc"; ctx.font = "bold 22px sans-serif";
             
-            if (faseAtual === 1) {
+            				
+				if (faseAtual === 1) {
                 ctx.fillText("PANDEMIA CONTROLADA!", canvas.width / 2, canvas.height / 2 - 40);
                 ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif"; ctx.fillText("FASE 2: Cuidado com os buracos negros!", canvas.width / 2, canvas.height / 2 + 10);
                 ctx.fillStyle = "#ff5500"; ctx.font = "bold 15px sans-serif"; ctx.fillText("ZONA MAGNÉTICA", canvas.width / 2, canvas.height / 2 + 45);
@@ -1185,6 +1408,237 @@
     window.addEventListener("resize", ajustarTela);
     window.addEventListener("orientationchange", ajustarTela);
     requestAnimationFrame(loop);
+	
+// =========================================================================
+// --- MÓDULO ISOLADO: SISTEMA DE MOCHILA AUTOMÁTICA FERRATECH V2.1 ---
+// =========================================================================
+(function() {
+    let saldoMochila = parseInt(localStorage.getItem("ferratech_creditos")) || 0;
+    let acumuladorBonus = parseInt(localStorage.getItem("ferratech_acumulador")) || 0;
+
+    let mochilaState = {
+        visivel: false,
+        fase: "FECHADA",       
+        y: -120,              
+        yAlvo: 30,            
+        largura: 55,          
+        altura: 68,           
+        alpha: 0,
+        tempoAberta: 0,
+        displaySaldo: saldoMochila,
+        anguloTampa: 0,        
+        travaGatilho: false    
+    };
+
+    let moedasAnimacao = [];
+
+    window.MochilaIntercambio.forçarGatilho = function() {
+        if (!mochilaState.visivel && !mochilaState.travaGatilho) {
+            mochilaState.travaGatilho = true;
+            dispararAnimacaoMochila();
+        }
+    };
+
+    function monitorarGatilhoMochila() {
+        if (mochilaState.visivel) {
+            atualizarFisicaMochila();
+        }
+    }
+
+    function dispararAnimacaoMochila() {
+        mochilaState.visivel = true;
+        mochilaState.fase = "ABRINDO";
+        mochilaState.y = -120;
+        mochilaState.alpha = 0;
+        mochilaState.tempoAberta = 0;
+        mochilaState.anguloTampa = 0;
+        moedasAnimacao = [];
+
+        saldoMochila += 1; 
+        localStorage.setItem("ferratech_creditos", saldoMochila);
+    }
+
+    function atualizarFisicaMochila() {
+        if (mochilaState.fase === "ABRINDO") {
+            mochilaState.y += (mochilaState.yAlvo - mochilaState.y) * 0.1;
+            if (mochilaState.alpha < 1) mochilaState.alpha += 0.08;
+
+            if (Math.abs(mochilaState.y - mochilaState.yAlvo) < 1) {
+                mochilaState.y = mochilaState.yAlvo;
+                mochilaState.fase = "TAMPA_ABRINDO";
+            }
+        }
+
+        if (mochilaState.fase === "TAMPA_ABRINDO") {
+            mochilaState.anguloTampa += 0.1;
+            if (mochilaState.anguloTampa >= 1) {
+                mochilaState.anguloTampa = 1;
+                mochilaState.fase = "ABERTA";
+
+                let canvasW = (typeof canvas !== "undefined" ? canvas.width : 400);
+                let posXFixa = canvasW - 25 - (mochilaState.largura / 2);
+                for (let i = 0; i < 5; i++) {
+                    moedasAnimacao.push({
+                        x: posXFixa + (Math.random() * 10 - 5),
+                        y: mochilaState.y - 35 - (i * 18),
+                        velY: 3.2 + Math.random() * 1.3,
+                        coletada: false
+                    });
+                }
+            }
+        }
+
+        if (mochilaState.fase === "ABERTA") {
+            let todasColetadas = true;
+
+            moedasAnimacao.forEach(moeda => {
+                if (!moeda.coletada) {
+                    moeda.y += moeda.velY;
+                    todasColetadas = false;
+
+                    if (moeda.y >= mochilaState.y + 10) {
+                        moeda.coletada = true;
+                        try { const som = new Audio("til.mp3"); som.volume = 0.12; som.play().catch(()=>{}); } catch(e){}
+                    }
+                }
+            });
+
+            if (todasColetadas) {
+                mochilaState.tempoAberta++;
+                mochilaState.displaySaldo = saldoMochila;
+                
+                if (mochilaState.tempoAberta > 35) {
+                    mochilaState.fase = "TAMPA_FECHANDO";
+                }
+            }
+        }
+
+        if (mochilaState.fase === "TAMPA_FECHANDO") {
+            mochilaState.anguloTampa -= 0.15;
+            if (mochilaState.anguloTampa <= 0) {
+                mochilaState.anguloTampa = 0;
+                mochilaState.fase = "FECHANDO";
+            }
+        }
+
+        if (mochilaState.fase === "FECHANDO") {
+            mochilaState.y += (-130 - mochilaState.y) * 0.08;
+            if (mochilaState.alpha > 0) mochilaState.alpha -= 0.08;
+
+            if (mochilaState.y <= -110) {
+                mochilaState.visivel = false;
+                mochilaState.fase = "FECHADA";
+                mochilaState.travaGatilho = false;
+            }
+        }
+    }
+
+    function renderizarMochilaModulo() {
+        if (!mochilaState.visivel || typeof ctx === "undefined" || typeof canvas === "undefined") return;
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, mochilaState.alpha));
+
+        let recuoBorda = 25;
+        let mX = canvas.width - mochilaState.largura - recuoBorda;
+        let mY = mochilaState.y;
+        let centroX = mX + mochilaState.largura / 2;
+
+        ctx.fillStyle = "#FFD700";
+        ctx.strokeStyle = "#B8860B";
+        ctx.lineWidth = 1;
+        moedasAnimacao.forEach(moeda => {
+            if (!moeda.coletada && moeda.y < mY + 12) {
+                ctx.beginPath();
+                ctx.arc(moeda.x, moeda.y, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+        });
+
+        ctx.fillStyle = "#151c28";
+        ctx.strokeStyle = "#25334d";
+        ctx.lineWidth = 1.5;
+        roundRect(ctx, mX - 6, mY + 12, 8, mochilaState.altura - 24, 4, true, true);
+        roundRect(ctx, mX + mochilaState.largura - 2, mY + 12, 8, mochilaState.altura - 24, 4, true, true);
+
+        ctx.strokeStyle = "#0d121c";
+        ctx.lineWidth = 4.5;
+        ctx.beginPath();
+        ctx.arc(centroX, mY + 4, 11, Math.PI, 0);
+        ctx.stroke();
+
+        ctx.fillStyle = "#1e2530"; 
+        ctx.strokeStyle = "#00ff00"; 
+        ctx.lineWidth = 2;
+        roundRect(ctx, mX, mY, mochilaState.largura, mochilaState.altura, 8, true, true);
+
+        ctx.fillStyle = "#141923";
+        ctx.strokeStyle = "#009900";
+        ctx.lineWidth = 1;
+        roundRect(ctx, mX + 5, mY + 28, mochilaState.largura - 10, mochilaState.altura - 33, 4, true, true);
+
+        ctx.save();
+        ctx.translate(centroX, mY + 6);
+        ctx.scale(1, 1 - (mochilaState.anguloTampa * 1.4)); 
+
+        ctx.fillStyle = "#2d384c";
+        ctx.strokeStyle = "#00ff00";
+        ctx.lineWidth = 1.5;
+        roundRect(ctx, -mochilaState.largura/2 + 3, -7, mochilaState.largura - 6, 13, 3, true, true);
+        
+        ctx.fillStyle = "#5a6982";
+        ctx.fillRect(-3, 2, 6, 4);
+        ctx.restore();
+
+        if (mochilaState.anguloTampa > 0.2) {
+            ctx.fillStyle = "#05070a";
+            ctx.fillRect(mX + 6, mY + 5, mochilaState.largura - 12, 4);
+        }
+
+        let dX = mX + 9;
+        let dY = mY + mochilaState.altura - 22;
+        let dL = mochilaState.largura - 18;
+        let dA = 15;
+
+        ctx.fillStyle = "#000000";
+        ctx.strokeStyle = "#2d3748";
+        ctx.lineWidth = 1.5;
+        roundRect(ctx, dX, dY, dL, dA, 3, true, true);
+
+        ctx.fillStyle = "#00ff00";
+        ctx.font = "bold 9px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(`FT:${mochilaState.displaySaldo}`, centroX, dY + 11);
+
+        ctx.restore();
+    }
+
+    function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height - radius);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        if (fill) ctx.fill();
+        if (stroke) ctx.stroke();
+    }
+
+    function injetarLoopMochila() {
+        monitorarGatilhoMochila();
+        renderizarMochilaModulo();
+        requestAnimationFrame(injetarLoopMochila);
+    }
+
+    setTimeout(injetarLoopMochila, 500);
+})();
 </script>
 </body>
 </html>
+				
