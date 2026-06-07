@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Star Fighter - Ferratech Jogos Campanha Social</title>
     
+	<script src="modulo2_orion.js"></script>
+    <script src="modulo3_pegasus.js"></script>
+    <script src="modulo4_alfacentauri.js"></script>
+
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-WHGRWM2R8F"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -45,39 +49,6 @@
             image-rendering: crisp-edges;
         }
     </style>
-	<script>
-    // 1. Desabilita o clique com o botão direito (Menu de Contexto)
-    document.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-        alert("© Ferratech ASH - Conteúdo protegido por direitos autorais.");
-    });
-
-    // 2. Desabilita atalhos de teclado comuns para cópia e inspeção
-    document.addEventListener('keydown', function(e) {
-        // Bloqueia Ctrl+C (Copiar)
-        if (e.ctrlKey && e.key === 'c') {
-            e.preventDefault();
-            return false;
-        }
-        
-        // Bloqueia Ctrl+U (Ver Código Fonte)
-        if (e.ctrlKey && e.key === 'u') {
-            e.preventDefault();
-            return false;
-        }
-
-        // Bloqueia Ctrl+Shift+I ou F12 (Inspecionar Elemento / Ferramentas do Desenvolvedor)
-        if ((e.ctrlKey && e.shiftKey && e.key === 'I') || e.key === 'F12') {
-            e.preventDefault();
-            return false;
-        }
-    });
-
-    // 3. Desabilita a seleção de texto por segurança extra via script
-    document.addEventListener('selectstart', function(e) {
-        e.preventDefault();
-    });
-</script>
 
 <style>
     body {
@@ -256,6 +227,7 @@
         ativo: false, morrendo: false, tempoMorte: 0
     };
 
+    // CONFIGURAÇÃO REESTRUTURADA: Painel de Botões da Sala de Comando
     const painel = {
         y: 0, altura: 150,
         btnEsq: { x: 15, y: 0, l: 50, a: 50 },
@@ -264,8 +236,11 @@
         btnBaixo: { x: 65, y: 0, l: 50, a: 50 },
         btnAtirar: { x: 0, y: 0, raio: 40 },
         btnIniciar: { x: 0, y: 0, l: 180, a: 50 },
-        btnRota1: { x: 0, y: 0, l: 140, a: 45 },
-        btnRota2: { x: 0, y: 0, l: 140, a: 45 }
+        
+        // Três novos botões das missões com tamanhos ajustados para caber perfeitamente lado a lado
+        btnOrion: { x: 0, y: 0, l: 110, a: 45 },
+        btnPegasus: { x: 0, y: 0, l: 110, a: 45 },
+        btnAlfaCentauri: { x: 0, y: 0, l: 110, a: 45 }
     };
 
     function configuringPainel() {
@@ -280,10 +255,19 @@
         painel.btnIniciar.x = canvas.width / 2 - painel.btnIniciar.l / 2;
         painel.btnIniciar.y = canvas.height / 2 + 60;
 
-        painel.btnRota1.x = canvas.width / 2 - 150;
-        painel.btnRota1.y = canvas.height - 80;
-        painel.btnRota2.x = canvas.width / 2 + 10;
-        painel.btnRota2.y = canvas.height - 80;
+        // Distribuição matemática perfeita dos 3 botões na parte inferior da tela
+        let espacamentoInter = 12;
+        let larguraTotalBotoes = (painel.btnOrion.l * 3) + (espacamentoInter * 2);
+        let margemEsquerdaInicial = (canvas.width - larguraTotalBotoes) / 2;
+
+        painel.btnOrion.x = margemEsquerdaInicial;
+        painel.btnOrion.y = canvas.height - 80;
+
+        painel.btnPegasus.x = painel.btnOrion.x + painel.btnOrion.l + espacamentoInter;
+        painel.btnPegasus.y = canvas.height - 80;
+
+        painel.btnAlfaCentauri.x = painel.btnPegasus.x + painel.btnPegasus.l + espacamentoInter;
+        painel.btnAlfaCentauri.y = canvas.height - 80;
 
         estrelasFundo.forEach(est => est.x = Math.random() * canvas.width);
 
@@ -450,8 +434,9 @@
         if (estadoJogo === "GAMEOVER" && (e.key === " " || e.key === "Enter")) { estadoJogo = "START"; return; }
         
         if (estadoJogo === "CINEMATICA_FINAL" && subEstadoCinematica === "SALA_CONTROLE") {
-            if (e.key === "1") { estadoJogo = "START"; }
-            if (e.key === "2") { alert("A v1.5 está chegando! Próximas missões em desenvolvimento."); }
+            if (e.key === "1") { if (typeof iniciarMissaoOrion === 'function') iniciarMissaoOrion(); else alert("Orion indisponível"); }
+            if (e.key === "2") { if (typeof iniciarMissaoPegasus === 'function') iniciarMissaoPegasus(); else alert("Pegasus indisponível"); }
+            if (e.key === "3") { if (typeof iniciarMissaoAlfaCentauri === 'function') iniciarMissaoAlfaCentauri(); else alert("Alfa Centauri indisponível"); }
             return;
         }
 
@@ -507,12 +492,19 @@
         }
         if (estadoJogo === "GAMEOVER") { estadoJogo = "START"; return; }
 
+        // ADICIONADO: Tratamento de clique por Toque para os 3 novos arquivos/botões de Missões
         if (estadoJogo === "CINEMATICA_FINAL" && subEstadoCinematica === "SALA_CONTROLE") {
-            if (tx >= painel.btnRota1.x && tx <= painel.btnRota1.x + painel.btnRota1.l && ty >= painel.btnRota1.y && ty <= painel.btnRota1.y + painel.btnRota1.a) {
-                estadoJogo = "START";
+            // Clique no botão Orion
+            if (tx >= painel.btnOrion.x && tx <= painel.btnOrion.x + painel.btnOrion.l && ty >= painel.btnOrion.y && ty <= painel.btnOrion.y + painel.btnOrion.a) {
+                if (typeof iniciarMissaoOrion === 'function') iniciarMissaoOrion(); else alert("Módulo Orion não encontrado.");
             }
-            if (tx >= painel.btnRota2.x && tx <= painel.btnRota2.x + painel.btnRota2.l && ty >= painel.btnRota2.y && ty <= painel.btnRota2.y + painel.btnRota2.a) {
-                alert("A v1.5 está chegando! Próximas missões em desenvolvimento.");
+            // Clique no botão Pegasus
+            if (tx >= painel.btnPegasus.x && tx <= painel.btnPegasus.x + painel.btnPegasus.l && ty >= painel.btnPegasus.y && ty <= painel.btnPegasus.y + painel.btnPegasus.a) {
+                if (typeof iniciarMissaoPegasus === 'function') iniciarMissaoPegasus(); else alert("Módulo Pegasus não encontrado.");
+            }
+            // Clique no botão Alfa Centauri
+            if (tx >= painel.btnAlfaCentauri.x && tx <= painel.btnAlfaCentauri.x + painel.btnAlfaCentauri.l && ty >= painel.btnAlfaCentauri.y && ty <= painel.btnAlfaCentauri.y + painel.btnAlfaCentauri.a) {
+                if (typeof iniciarMissaoAlfaCentauri === 'function') iniciarMissaoAlfaCentauri(); else alert("Módulo Alfa Centauri não encontrado.");
             }
             return;
         }
@@ -545,8 +537,7 @@
         }
         tocarSomTiro();
     }
-
-    // --- LÓGICA DO JOGO ---
+	// --- LÓGICA DO JOGO ---
     function atualizar(ts) {
         if (estadoJogo === "CINEMATICA_ORION") {
             estrelasFundo.forEach(est => {
@@ -625,41 +616,31 @@
                 let pct = Math.min(1, tempoDecorrido / 18000);
 
                 // --- FÍSICA E MOVIMENTO DO PLANETA ---
-                // Ele nasce no ponto de fuga central e faz uma curva estilosa saindo pela direita do para-brisa
                 if (planetaCinematica.ativo) {
-                    // Crescimento progressivo e robusto do tamanho
                     planetaCinematica.raio = 2 + (pct * 260); 
                     
-                    // Movimento de fuga em direção ao canto direito da tela
                     let destinoPlanetaX = canvas.width + planetaCinematica.raio + 40;
-                    let destinoPlanetaY = (canvas.height * 0.45) * 0.7; // Mantém dentro do para-brisa superior
+                    let destinoPlanetaY = (canvas.height * 0.45) * 0.7; 
                     
                     planetaCinematica.x = planetaCinematica.inicialX + (destinoPlanetaX - planetaCinematica.inicialX) * Math.pow(pct, 1.5);
                     planetaCinematica.y = planetaCinematica.inicialY + (destinoPlanetaY - planetaCinematica.inicialY) * pct;
 
-                    // Desativa o planeta quando ele vazar totalmente da visão do jogador
                     if (planetaCinematica.x - planetaCinematica.raio > canvas.width) {
                         planetaCinematica.ativo = false;
                     }
                 }
 
-                // --- FÍSICA E ESCALA DA BASE ESPACIAL (Cresce continuamente de longe) ---
-                // Começa como um pontinho azul microscópico no horizonte (0.005) e vai expandindo gradualmente
+                // --- FÍSICA E ESCALA DA BASE ESPACIAL ---
                 if (pct < 0.92) {
-                    // Crescimento suave exponencial para dar efeito de aceleração real no fim
                     escalaBaseEspacial = 0.005 + Math.pow(pct, 3.2) * 0.995;
-                    
-                    // Centraliza ela no ponto de fuga, ajustando para crescer a partir do seu próprio meio geométrico
                     baseEspacialX = canvas.width / 2;
-                    baseEspacialY = (canvas.height * 0.45) / 2 + (pct * 40); // Desce sutilmente simulando alinhamento da Doca
+                    baseEspacialY = (canvas.height * 0.45) / 2 + (pct * 40); 
                 } else {
-                    // Trava no tamanho completo nos instantes finais da acoplagem
                     escalaBaseEspacial = 1.0;
                     baseEspacialX = canvas.width / 2;
                     baseEspacialY = (canvas.height * 0.45) / 2 + 40;
                 }
 
-                // Quando completar os 18 segundos de animação pura, dispara o Fade Out
                 if (tempoDecorrido >= 18000) {
                     subEstadoCinematica = "FADE_OUT";
                     tempoInicioCinematica = ts;
@@ -738,7 +719,6 @@
         // --- DINÂMICA DA QUEDA E COLISÃO DAS MOEDAS ESPECIAIS ---
         for (let i = moedasEspeciais.length - 1; i >= 0; i--) {
             let moeda = moedasEspeciais[i];
-            moSurface = moedasEspeciais[i];
             moeda.y += moeda.velQueda;
 
             if (verificarColisao(moeda, x_jogador)) {
@@ -818,7 +798,6 @@
                 }
                 continue;
             }
-
             if (faseAtual === 4) {
                 let tiroDestruido = false;
                 for (let aIdx = asteroides.length - 1; aIdx >= 0; aIdx--) {
@@ -1053,6 +1032,28 @@
     }
 
     // --- RENDERIZAÇÃO ---
+	function escreverTextoBlocoQuebrado(contexto, texto, x, y, larguraMaxima, linhaAltura) {
+    if (!texto) return; // Garante que se o texto vier vazio, não quebra o jogo
+    
+    let palavras = texto.split(' ');
+    let linha = '';
+
+    for(let n = 0; n < palavras.length; n++) {
+        let testLinha = linha + palavras[n] + ' ';
+        let metricas = contexto.measureText(testLinha);
+        let testLargura = metricas.width;
+        
+        if (testLargura > larguraMaxima && n > 0) {
+            contexto.fillText(linha, x, y);
+            linha = palavras[n] + ' ';
+            y += linhaAltura;
+        } else {
+            linha = testLinha;
+        }
+    }
+    contexto.fillText(linha, x, y);
+}
+	
     function desenhar() {
         ctx.save();
         if (tremorCena > 0 && estadoJogo === "JOGANDO") {
@@ -1085,7 +1086,7 @@
                 if (p.tipo === "MISSIAL_AMARELO") {
                     ctx.fillStyle = "#FFFF00"; ctx.beginPath(); ctx.arc(p.x + 12, p.y + 12, 12, 0, Math.PI*2); ctx.fill();
                     ctx.strokeStyle = "#FF4500"; ctx.lineWidth = 3; ctx.stroke();
-                    ctx.fillStyle = "#00 Papa"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#00FFFF"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
                     ctx.fillText("M", p.x + 12, p.y + 12);
                 } else {
                     ctx.fillStyle = p.tipo === "TIRO_DUPLO" ? "#00d2ff" : "#00ff66"; ctx.beginPath(); ctx.arc(p.x + 12, p.y + 12, 11, 0, Math.PI*2); ctx.fill();
@@ -1251,7 +1252,6 @@
         if (estadoJogo === "CINEMATICA_FINAL") {
             if (subEstadoCinematica === "PERCURSO_GLAMOUROSO" || subEstadoCinematica === "FADE_OUT") {
                 
-                // 1. Renderiza Estrelas Brilhantes fixas oscilando no fundo
                 estrelasEspeciais.forEach(est => {
                     ctx.fillStyle = "rgba(255, 255, 255, " + est.brilho + ")";
                     ctx.beginPath();
@@ -1260,7 +1260,6 @@
                     ctx.fill();
                 });
 
-                // 2. Desenha o Planeta passando se ele estiver ativo (Camada atrás da base)
                 if (planetaCinematica.ativo) {
                     let gradPlaneta = ctx.createRadialGradient(
                         planetaCinematica.x - (planetaCinematica.raio * 0.25), 
@@ -1282,7 +1281,6 @@
                     ctx.stroke();
                 }
 
-                // 3. Desenha a Base Espacial aproximando-se dinamicamente bem no centro
                 ctx.save();
                 ctx.translate(baseEspacialX, baseEspacialY);
                 ctx.scale(escalaBaseEspacial, escalaBaseEspacial);
@@ -1290,7 +1288,6 @@
                 if (imgBaseEspacial.complete && imgBaseEspacial.width > 0) {
                     ctx.drawImage(imgBaseEspacial, -imgBaseEspacial.width / 2, -imgBaseEspacial.height / 2);
                 } else {
-                    // Fallback visual com brilho azul se a imagem não carregar
                     let gradBase = ctx.createRadialGradient(0, 0, 5, 0, 0, 100);
                     gradBase.addColorStop(0, "#00d2ff");
                     gradBase.addColorStop(0.5, "#0044ff");
@@ -1300,14 +1297,12 @@
                 }
                 ctx.restore();
                 
-                // 4. Renderiza o Cockpit fixo em primeiro plano (Cobre o fundo perfeitamente)
                 if (imgCockpit.complete && imgCockpit.width > 0) { 
                     ctx.drawImage(imgCockpit, 0, 0, canvas.width, canvas.height); 
                 } else {
                     ctx.fillStyle = "rgba(0, 210, 255, 0.15)"; ctx.fillRect(0, canvas.height - 220, canvas.width, 220);
                 }
                 
-                // Texto de Status da Viagem de Volta
                 ctx.fillStyle = "#00ffcc"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
                 ctx.fillText("🛰️ DOCAGEM: RETORNANDO PELO PARABRISA DA DIREITA", canvas.width / 2, 40);
             }
@@ -1325,14 +1320,22 @@
                 ctx.fillStyle = "#00ffcc"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
                 escreverTextoBlocoQuebrado(ctx, textoParaExibir, canvas.width / 2, 30, canvas.width - 40, 19);
 
+                // ATUALIZADO: Desenho renderizado lado a lado com os 3 novos botões de rota direta
                 if (caracteresVisiveisTexto >= textoCompletoMensagem.length) {
-                    ctx.fillStyle = "#00ffff"; ctx.fillRect(painel.btnRota1.x, painel.btnRota1.y, painel.btnRota1.l, painel.btnRota1.a);
-                    ctx.fillStyle = "#000"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-                    ctx.fillText("REPETIR OPERAÇÃO", painel.btnRota1.x + painel.btnRota1.l / 2, painel.btnRota1.y + painel.btnRota1.a / 2);
+                    // 1. Botão Módulo 2: Orion
+                    ctx.fillStyle = "#00ffcc"; ctx.fillRect(painel.btnOrion.x, painel.btnOrion.y, painel.btnOrion.l, painel.btnOrion.a);
+                    ctx.fillStyle = "#000"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillText("MISSÃO ORION", painel.btnOrion.x + painel.btnOrion.l / 2, painel.btnOrion.y + painel.btnOrion.a / 2);
 
-                    ctx.fillStyle = "#ffaa00"; ctx.fillRect(painel.btnRota2.x, painel.btnRota2.y, painel.btnRota2.l, painel.btnRota2.a);
-                    ctx.fillStyle = "#000"; ctx.font = "bold 12px sans-serif";
-                    ctx.fillText("PRÓXIMA ROTA (V1.5)", painel.btnRota2.x + painel.btnRota2.l / 2, painel.btnRota2.y + painel.btnRota2.a / 2);
+                    // 2. Botão Módulo 3: Pegasus
+                    ctx.fillStyle = "#ffaa00"; ctx.fillRect(painel.btnPegasus.x, painel.btnPegasus.y, painel.btnPegasus.l, painel.btnPegasus.a);
+                    ctx.fillStyle = "#000"; ctx.font = "bold 11px sans-serif";
+                    ctx.fillText("PEGASUS", painel.btnPegasus.x + painel.btnPegasus.l / 2, painel.btnPegasus.y + painel.btnPegasus.a / 2);
+
+                    // 3. Botão Módulo 4: Alfa Centauri
+                    ctx.fillStyle = "#e000ff"; ctx.fillRect(painel.btnAlfaCentauri.x, painel.btnAlfaCentauri.y, painel.btnAlfaCentauri.l, painel.btnAlfaCentauri.a);
+                    ctx.fillStyle = "#fff"; ctx.font = "bold 11px sans-serif";
+                    ctx.fillText("CENTAURI", painel.btnAlfaCentauri.x + painel.btnAlfaCentauri.l / 2, painel.btnAlfaCentauri.y + painel.btnAlfaCentauri.a / 2);
                 }
             }
             if (opacidadeFade > 0) { ctx.fillStyle = "rgba(0, 0, 0, " + opacidadeFade + ")"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
@@ -1343,7 +1346,7 @@
             ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#00ffcc"; ctx.font = "bold 22px sans-serif";
             
             				
-				if (faseAtual === 1) {
+			if (faseAtual === 1) {
                 ctx.fillText("PANDEMIA CONTROLADA!", canvas.width / 2, canvas.height / 2 - 40);
                 ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif"; ctx.fillText("FASE 2: Cuidado com os buracos negros!", canvas.width / 2, canvas.height / 2 + 10);
                 ctx.fillStyle = "#ff5500"; ctx.font = "bold 15px sans-serif"; ctx.fillText("ZONA MAGNÉTICA", canvas.width / 2, canvas.height / 2 + 45);
@@ -1386,7 +1389,7 @@
         ctx.restore();
     }
 
-    function escreverTextoBlocoQuebrado(contexto, texto, x, y, larguraMaxima, espacamentoLinha) {
+    function escribirTextoBlocoQuebrado(contexto, texto, x, y, larguraMaxima, espacamentoLinha) {
         let palavras = texto.split(' '); let linha = ''; let posY = y;
         for (let n = 0; n < palavras.length; n++) {
             let linhaTeste = linha + palavras[n] + ' '; let metricas = contexto.measureText(linhaTeste);
@@ -1414,7 +1417,7 @@
 // =========================================================================
 (function() {
     let saldoMochila = parseInt(localStorage.getItem("ferratech_creditos")) || 0;
-    let acumuladorBonus = parseInt(localStorage.getItem("ferratech_acumulador")) || 0;
+    let acumuladorBonus = parseInt(localStorage.getItem("ferratech_acumulador")) || 0; 
 
     let mochilaState = {
         visivel: false,
@@ -1630,7 +1633,7 @@
         if (stroke) ctx.stroke();
     }
 
-    function injetarLoopMochila() {
+    function injetarLoopMochila() { 
         monitorarGatilhoMochila();
         renderizarMochilaModulo();
         requestAnimationFrame(injetarLoopMochila);
@@ -1641,4 +1644,3 @@
 </script>
 </body>
 </html>
-				
