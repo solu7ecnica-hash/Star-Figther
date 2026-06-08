@@ -48,16 +48,13 @@
             image-rendering: pixelated;
             image-rendering: crisp-edges;
         }
+        body {
+            -webkit-user-select: none;  /* Safari */
+            -moz-user-select: none;     /* Firefox */
+            -ms-user-select: none;      /* IE10+ */
+            user-select: none;          /* Padrão */
+        }
     </style>
-
-<style>
-    body {
-        -webkit-user-select: none;  /* Safari */
-        -moz-user-select: none;     /* Firefox */
-        -ms-user-select: none;      /* IE10+ */
-        user-select: none;          /* Padrão */
-    }
-</style>
 </head>
 <body>
 
@@ -180,7 +177,7 @@
     let baseEspacialX = 0;
     let baseEspacialY = 0;
     let opacidadeFade = 0;
-    let textoCompletoMensagem = "Parabéns, Comandante Mauro, pela gloriosa vitória sobre as forças do Coronavírus e do Dengozão! O quadrante está seguro graças a você. Agora, junte-se a nós na Sala de Comando... Vamos decidir a próxima estratégia de defesa!";
+    let textoCompletoMensagem = "Parabéns, Comandante Mauro, pela gloriosa vitória sobre as forces do Coronavírus e do Dengozão! O quadrante está seguro graças a você. Agora, junte-se a nós na Sala de Comando... Vamos decidir a próxima estratégia de defesa!";
     let caracteresVisiveisTexto = 0;
     let tempoUltimoCaractereMina = 0;
 
@@ -434,7 +431,7 @@
         if (estadoJogo === "GAMEOVER" && (e.key === " " || e.key === "Enter")) { estadoJogo = "START"; return; }
         
         if (estadoJogo === "CINEMATICA_FINAL" && subEstadoCinematica === "SALA_CONTROLE") {
-            if (e.key === "1") { if (typeof iniciarMissaoOrion === 'function') iniciarMissaoOrion(); else alert("Orion indisponível"); }
+            if (e.key === "1") { if (typeof iniciarMissaoOrion === 'function') { iniciarMissaoOrion(); estadoJogo = "JOGANDO_ORION"; } else alert("Orion indisponível"); }
             if (e.key === "2") { if (typeof iniciarMissaoPegasus === 'function') iniciarMissaoPegasus(); else alert("Pegasus indisponível"); }
             if (e.key === "3") { if (typeof iniciarMissaoAlfaCentauri === 'function') iniciarMissaoAlfaCentauri(); else alert("Alfa Centauri indisponível"); }
             return;
@@ -496,7 +493,10 @@
         if (estadoJogo === "CINEMATICA_FINAL" && subEstadoCinematica === "SALA_CONTROLE") {
             // Clique no botão Orion
             if (tx >= painel.btnOrion.x && tx <= painel.btnOrion.x + painel.btnOrion.l && ty >= painel.btnOrion.y && ty <= painel.btnOrion.y + painel.btnOrion.a) {
-                if (typeof iniciarMissaoOrion === 'function') iniciarMissaoOrion(); else alert("Módulo Orion não encontrado.");
+                if (typeof iniciarMissaoOrion === 'function') { 
+                    iniciarMissaoOrion(); 
+                    estadoJogo = "JOGANDO_ORION"; 
+                } else alert("Módulo Orion não encontrado.");
             }
             // Clique no botão Pegasus
             if (tx >= painel.btnPegasus.x && tx <= painel.btnPegasus.x + painel.btnPegasus.l && ty >= painel.btnPegasus.y && ty <= painel.btnPegasus.y + painel.btnPegasus.a) {
@@ -537,8 +537,17 @@
         }
         tocarSomTiro();
     }
+
 	// --- LÓGICA DO JOGO ---
     function atualizar(ts) {
+        // --- ADICIONADO: SE FOR ESTADO DE ORION, SE DESVIA DO FLUXO PRINCIPAL ---
+        if (estadoJogo === "JOGANDO_ORION") {
+            if (typeof atualizarOrion === "function") {
+                atualizarOrion(ts);
+            }
+            return;
+        }
+
         if (estadoJogo === "CINEMATICA_ORION") {
             estrelasFundo.forEach(est => {
                 est.y += est.vel * 4; 
@@ -1030,31 +1039,38 @@
             explosoes[i].vida--; if (explosoes[i].vida <= 0) explosoes.splice(i, 1);
         }
     }
-
-    // --- RENDERIZAÇÃO ---
+	// --- RENDERIZAÇÃO ---
 	function escreverTextoBlocoQuebrado(contexto, texto, x, y, larguraMaxima, linhaAltura) {
-    if (!texto) return; // Garante que se o texto vier vazio, não quebra o jogo
-    
-    let palavras = texto.split(' ');
-    let linha = '';
-
-    for(let n = 0; n < palavras.length; n++) {
-        let testLinha = linha + palavras[n] + ' ';
-        let metricas = contexto.measureText(testLinha);
-        let testLargura = metricas.width;
+        if (!texto) return; 
         
-        if (testLargura > larguraMaxima && n > 0) {
-            contexto.fillText(linha, x, y);
-            linha = palavras[n] + ' ';
-            y += linhaAltura;
-        } else {
-            linha = testLinha;
+        let palavras = texto.split(' ');
+        let linha = '';
+
+        for(let n = 0; n < palavras.length; n++) {
+            let testLinha = linha + palavras[n] + ' ';
+            let metricas = contexto.measureText(testLinha);
+            let testLargura = metricas.width;
+            
+            if (testLargura > larguraMaxima && n > 0) {
+                contexto.fillText(linha, x, y);
+                linha = palavras[n] + ' ';
+                y += linhaAltura;
+            } else {
+                linha = testLinha;
+            }
         }
+        contexto.fillText(linha, x, y);
     }
-    contexto.fillText(linha, x, y);
-}
 	
     function desenhar() {
+        // --- ADICIONADO: SE FOR ESTADO DE ORION, CHAMA O DESENHO EXTERNO ---
+        if (estadoJogo === "JOGANDO_ORION") {
+            if (typeof desenharOrion === "function") {
+                desenharOrion(ctx);
+            }
+            return;
+        }
+
         ctx.save();
         if (tremorCena > 0 && estadoJogo === "JOGANDO") {
             ctx.translate((Math.random() - 0.5) * tremorCena, (Math.random() - 0.5) * tremorCena);
@@ -1283,7 +1299,7 @@
 
                 ctx.save();
                 ctx.translate(baseEspacialX, baseEspacialY);
-                ctx.scale(escalaBaseEspacial, escalaBaseEspacial);
+                ctx.scale(escalaBaseEspacial, scalaBaseEspacial);
                 
                 if (imgBaseEspacial.complete && imgBaseEspacial.width > 0) {
                     ctx.drawImage(imgBaseEspacial, -imgBaseEspacial.width / 2, -imgBaseEspacial.height / 2);
@@ -1320,7 +1336,7 @@
                 ctx.fillStyle = "#00ffcc"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
                 escreverTextoBlocoQuebrado(ctx, textoParaExibir, canvas.width / 2, 30, canvas.width - 40, 19);
 
-                // ATUALIZADO: Desenho renderizado lado a lado com os 3 novos botões de rota direta
+                // ATUALIZADO: Desenho renderizado lado a lado com os 3 novos botões de rota direta 
                 if (caracteresVisiveisTexto >= textoCompletoMensagem.length) {
                     // 1. Botão Módulo 2: Orion
                     ctx.fillStyle = "#00ffcc"; ctx.fillRect(painel.btnOrion.x, painel.btnOrion.y, painel.btnOrion.l, painel.btnOrion.a);
@@ -1345,7 +1361,6 @@
             ctx.fillStyle = "rgba(5, 0, 20, 0.95)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#00ffcc"; ctx.font = "bold 22px sans-serif";
             
-            				
 			if (faseAtual === 1) {
                 ctx.fillText("PANDEMIA CONTROLADA!", canvas.width / 2, canvas.height / 2 - 40);
                 ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif"; ctx.fillText("FASE 2: Cuidado com os buracos negros!", canvas.width / 2, canvas.height / 2 + 10);
@@ -1389,20 +1404,8 @@
         ctx.restore();
     }
 
-    function escribirTextoBlocoQuebrado(contexto, texto, x, y, larguraMaxima, espacamentoLinha) {
-        let palavras = texto.split(' '); let linha = ''; let posY = y;
-        for (let n = 0; n < palavras.length; n++) {
-            let linhaTeste = linha + palavras[n] + ' '; let metricas = contexto.measureText(linhaTeste);
-            if (metricas.width > larguraMaxima && n > 0) {
-                contexto.fillText(linha, x, posY); linha = palavras[n] + ' '; posY += espacamentoLinha;
-            } else { linha = linhaTeste; }
-        }
-        contexto.fillText(linha, x, posY);
-    }
-
     function loop(timestamp) {
         atualizar(timestamp || performance.now());
-
         desenhar();
         requestAnimationFrame(loop);
     }
