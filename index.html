@@ -6,49 +6,47 @@
     <title>Star Fighter - Ferratech Jogos Campanha Social</title>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-WHGRWM2R8F"></script>
 	<script>
-   
-    const MENSAGEM_COPYRIGHT = "© Direitos Autorais Reservados - Star Fighter (Cmd. Mauro). O código-fonte e os recursos deste jogo são protegidos por lei. A cópia ou inspeção não autorizada é proibida.";
+// Seus direitos autorais
+    const MENSAGEM_COPYRIGHT = "© Direitos Autorais Reservados - Star Fighter (Cmd. Mauro).";
 
-   
-    document.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-        alert(MENSAGEM_COPYRIGHT);
-        return false;
-    });
+    // TRUQUE DE MESTRE: Se você colocar ?admin=1 no final do link do GitHub, a segurança DESLIGA!
+    // Exemplo: https://seu-usuario.github.io/seu-repositorio/figther_16.html?admin=1
+    const urlParams = new URLSearchParams(window.location.search);
+    const modoDesenvolvedor = urlParams.get('admin') === '1';
 
-   
-    document.addEventListener('keydown', function(e) {
-        
-      
-        if (e.ctrlKey && e.key === 'c') {
+    // Se o modo desenvolvedor estiver ativo, avisa no console secreto e libera a página
+    if (modoDesenvolvedor) {
+        console.log("🔓 MODO DESENVOLVEDOR ATIVO: Travas de segurança desabilitadas para investigação.");
+    } else {
+        // --- SE FOR UM USUÁRIO COMUM, AS TRAVAS FUNCIONAM NORMALMENTE ---
+
+        // 1. Bloqueia o Clique Direito
+        document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
-            alert("Ação Bloqueada!\n\n" + MENSAGEM_COPYRIGHT);
+            alert(MENSAGEM_COPYRIGHT);
             return false;
-        }
+        });
 
-        
-        if (e.ctrlKey && e.key === 'u') {
+        // 2. Desabilita atalhos de teclado (F12, Ctrl+U, Ctrl+Shift+I)
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'c') { e.preventDefault(); alert("Cópia proibida!\n" + MENSAGEM_COPYRIGHT); return false; }
+            if (e.ctrlKey && e.key === 'u') { e.preventDefault(); alert("Código protegido!\n" + MENSAGEM_COPYRIGHT); return false; }
+            if (
+                (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) || 
+                (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')) || 
+                e.key === 'F12'
+            ) {
+                e.preventDefault();
+                alert("Ferramentas bloqueadas!\n" + MENSAGEM_COPYRIGHT);
+                return false;
+            }
+        });
+
+        // 3. Desabilita a seleção de texto
+        document.addEventListener('selectstart', function(e) {
             e.preventDefault();
-            alert("Acesso Negado!\n\n" + MENSAGEM_COPYRIGHT);
-            return false;
-        }
-
-        
-        if (
-            (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) || 
-            (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')) || 
-            e.key === 'F12'
-        ) {
-            e.preventDefault();
-            alert("Ferramentas de Desenvolvedor Bloqueadas!\n\n" + MENSAGEM_COPYRIGHT);
-            return false;
-        }
-    });
-
-    
-    document.addEventListener('selectstart', function(e) {
-        e.preventDefault();
-    });
+        });
+    }
 </script>
 
 <script src="modulo3_pegasus.js"></script>
