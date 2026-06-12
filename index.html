@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-	<link rel="icon" type="image/x-icon" href="nave.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Star Fighter - Ferratech Jogos Campanha Social</title>
@@ -493,11 +492,11 @@
 
     function dispararMissil() {
         m_tiros_especiais.push({
-            x: x_jogador.x + x_jogador.largura / 2 - 45, 
+            x: x_jogador.x + x_jogador.largura / 2 - 20, 
             y: x_jogador.y - 145,
-            largura: 90,
-            altura: 150,
-            vel: 10
+            largura: 40,
+            altura: 100,
+            vel: 8
         });
         tocarSomMissil();
     }
@@ -1675,21 +1674,50 @@
             }
         }
         
-        if (estadoJogo === "CINEMATICA_FINAL" && subEstadoCinematica === "SALA_CONTROLE") {
-            if (mouseX >= painel.btnOrion.x && mouseX <= painel.btnOrion.x + painel.btnOrion.l &&
-                mouseY >= painel.btnOrion.y && mouseY <= painel.btnOrion.y + painel.btnOrion.a) {
-                
-                if (typeof iniciarMissaoOrion === 'function') {
-                    try { somCombate.pause(); somSuspense.play().catch(() => {}); } catch(e){}
-                    window.location.href = "missao_orion.html";
-                }
+      if (estadoJogo === "CINEMATICA_FINAL" && subEstadoCinematica === "SALA_CONTROLE") {
+        if (mouseX >= painel.btnOrion.x && mouseX <= painel.btnOrion.x + painel.btnOrion.l &&
+            mouseY >= painel.btnOrion.y && mouseY <= painel.btnOrion.y + painel.btnOrion.a) {
+            
+            try {
+                window.location.href = "missao_orion.html";
+                somCombate.pause();
+                somSuspense.play().catch(() => {});
+            } catch(e) {
+                window.location.href = "missao_orion.html";
             }
         }
-    });
+    }
+	});
+</script>
 
-    //console.log("📡 Sensor Ativado: Monitorando teclas do teclado...");
-	
-	
+<button id="botao-teste-orion" onclick="forcarMissaoOrion()" style="
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 999999;
+    padding: 15px 25px;
+    background-color: #ff0055;
+    color: white;
+    font-family: sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    border: 3px solid white;
+    border-radius: 8px;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.5);
+    cursor: pointer;
+">
+    ⚠️ FORÇAR MISSÃO ÓRION (TESTE)
+</button>
+
+<script>
+function forcarMissaoOrion() {
+    console.log("Botão de teste HTML clicado com sucesso!");
+    try {
+        window.location.href = "missao_orion.html";
+    } catch(e) {
+        window.location.href = "missao_orion.html";
+    }
+}
 </script>
 
 </body>
