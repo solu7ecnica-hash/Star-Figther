@@ -115,7 +115,7 @@
     let audioDisparado = false;
     
     // CORREÇÃO DE SÊNIOR: Aumentado de 160 para 190 para dar margem de segurança no mobile
-    let alturaPainel = 190; 
+    let alturaPainel = 210; 
 
     // --- SISTEMA DE PARTÍCULAS ---
     let particulasExplosao = [];
@@ -230,7 +230,7 @@
 
     function mapearBotoesVirtuais() {
         // CORREÇÃO DE SÊNIOR: Ajustado o recuo para centralizar os controles dentro do espaço visível do Canvas
-        let baseY = canvas.height - alturaPainel + 30;
+        let baseY = canvas.height - alturaPainel + 10;
         painel.btnEsq.y = baseY + 45; 
         painel.btnDir.y = baseY + 45;
         painel.btnCima.y = baseY; 
