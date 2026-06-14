@@ -142,8 +142,86 @@
 </head>
 <body>
 
+<body>
+<div id="tela-splash" style="position: fixed !important; 
+ top: 0 !important; left: 0 !important; width: 100vw !important; 
+ height: 100vh !important; background-color: #000000 !important; 
+ background-image: url('TELA.jpeg') !important; background-position: 
+ center !important; background-repeat: no-repeat !important; background-size: 
+ contain !important; z-index: 99999999 !important;"></div>
+
 <div class="caixa-jogo-fixa">
     <canvas id="gameCanvas"></canvas>
+
+    <button id="menu-credito-fixo" onclick="abrirLojaFerratech()" style="
+        position: absolute !important;
+        top: 20px !important;
+        right: 20px !important;
+        z-index: 100000000 !important;
+        padding: 12px 22px !important;
+        background-color: #000000 !important;
+        color: #00ffcc !important;
+        font-family: 'Courier New', monospace !important;
+        font-size: 16px !important;
+        font-weight: bold !important;
+        border: 3px solid #00ffcc !important;
+        border-radius: 8px !important;
+        box-shadow: 0px 4px 15px rgba(0, 255, 204, 0.6) !important;
+        cursor: pointer !important;
+        display: block !important;
+    ">
+        💳 CRED
+    </button>
+
+    <div id="janela-loja-ferratech" style="
+        display: none; 
+        position: fixed !important; 
+        top: 0 !important; 
+        left: 0 !important; 
+        width: 100vw !important; 
+        height: 100vh !important; 
+        background-color: rgba(0, 0, 0, 0.95) !important; 
+        z-index: 100000001 !important; 
+        justify-content: center !important; 
+        align-items: center !important; 
+        font-family: 'Courier New', monospace !important; 
+        color: #fff !important;">
+		
+        <div style="background: #111; border: 3px solid #00ffcc; border-radius: 12px; width: 90%; max-width: 450px; padding: 20px; box-shadow: 0 0 25px #00ffcc; text-align: center;">
+            <h2 style="color: #00ffcc; margin-top: 0; text-shadow: 0 0 5px #00ffcc;">LOJA FERRATECH</h2>
+            <p style="font-size: 16px; border-bottom: 1px dashed #333; padding-bottom: 10px;">
+                🎒 Saldo da Mochila: <span id="loja-saldo-moedas" style="color: #ffaa00; font-weight: bold;">0</span> Moedas
+            </p>
+            
+            <div style="margin: 20px 0; text-align: left; display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 4px solid #00ffcc;">
+                    <div><strong style="color: #00ffcc;">🛡️ Escudo Modo Deus</strong><br><span style="font-size: 11px; color: #aaa;">Invencibilidade por 5s</span></div>
+                    <button onclick="comprarItemLoja('escudo', 50)" style="background: #ffaa00; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; color:#000;">50 M</button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 4px solid #ff3333;">
+                    <div><strong style="color: #ff3333;">🚀 Mísseis Extras</strong><br><span style="font-size: 11px; color: #aaa;">+5 Projéteis pesados</span></div>
+                    <button onclick="comprarItemLoja('misseis', 30)" style="background: #ffaa00; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; color:#000;">30 M</button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 4px solid #ffff00;">
+                    <div><strong style="color: #ffff00;">⚡ Laser Contínuo</strong><br><span style="font-size: 11px; color: #aaa;">Segure para disparar contínuo</span></div>
+                    <button id="btn-comprar-laser" onclick="comprarItemLoja('laser', 100)" style="background: #ffaa00; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; color:#000;">100 M</button>
+                </div>
+				<div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 4px solid #ffaa00;">
+		<div><strong style="color: #ffaa00;">🍔 X-Ferratech Combo</strong><br><span style="font-size: 11px; color: #aaa;">Bateu aquela fome no espaço?</span></div>
+		<button onclick="comprarItemLoja('lanche', 80)" style="background: #ff5555; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; color:#fff;">80 M</button>
+		</div>
+
+		<div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 4px solid #00aaff;">
+			<div><strong style="color: #00aaff;">🥤 Refrigerante Especial</strong><br><span style="font-size: 11px; color: #aaa;">0% Marcas, 100% Prejuízo</span></div>
+		<button onclick="comprarItemLoja('refri', 40)" style="background: #ff5555; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; color:#fff;">40 M</button>
+		</div>
+            </div>
+
+            <button onclick="fecharLojaFerratech()" style="background: #00ffcc; color: #000; border: none; width: 100%; padding: 12px; font-weight: bold; font-size: 14px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
+                ◀ VOLTAR PARA O COMBATE
+            </button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -266,7 +344,7 @@
 
     // Configuração do Jogador
     const x_jogador = { 
-        x: 0, y: 0, largura: 62, altura: 62, velocidad: 7,
+        x: 0, y: 0, largura: 65, altura: 67, velocidad: 7,
         movendoEsquerda: false, movendoDireita: false, movendoCima: false, movendoBaixo: false,
         vidaMax: 10, vida: 10, tipoTiro: "NORMAL",
         escala: 1, emSucao: false, buracoSugador: null, anguloMorte: 0
@@ -1688,8 +1766,309 @@
         }
     }
 	});
+	
+	// Desse jeito o código só roda se o botão realmente existir no HTML, evitando travar a Splash
+	const btnMissao = document.getElementById('botao-missao1');
+	if (btnMissao) {
+    btnMissao.addEventListener('click', iniciarMissao);
+	}
+	
+	
+	// ========================================================
+// 🚀 INJEÇÃO DE INICIALIZAÇÃO DA SPLASH (LABORATÓRIO ASH)
+// ========================================================
+
+// 1. Garante que o motor do jogo calcule o tamanho certo na abertura
+setTimeout(function() {
+    if (typeof ajustarTela === "function") {
+        ajustarTela();
+    }
+}, 50);
+
+// 2. Conta os 3 segundos cravados, apaga a Splash e inicia a jogabilidade
+setTimeout(function() {
+    const splash = document.getElementById('tela-splash');
+    if (splash) {
+        splash.remove(); // Deleta a cortina preta/imagem da memória
+    }
+    
+    // Força o motor do Canvas a acordar em tela cheia
+    window.dispatchEvent(new Event('resize'));
+    if (typeof ajustarTela === "function") {
+        ajustarTela();
+    }
+    
+    console.log("🛸 Nave ASH Pronta! Jogo iniciado com sucesso.");
+}, 3000);
+</script>
+<script>
+(function() {
+    // 1. CRIAÇÃO DO BOTÃO "CRED" VIA JAVASCRIPT (IGUAL AO ATALHO ÓRION)
+    const btnCred = document.createElement('button');
+    btnCred.id = 'menu-credito-fixo';
+    btnCred.innerHTML = '💳 CRED';
+    
+    // Aplicando o estilo bruto e reforçado direto na fiação
+    Object.assign(btnCred.style, {
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        zIndex: '2147483647', // Camada suprema por cima do Canvas
+        padding: '12px 20px',
+        backgroundColor: '#000000',
+        color: '#00ffcc',
+        fontFamily: 'Courier New, monospace',
+        fontSize: '16px',
+        fontWeight: 'bold',
+        border: '2px solid #00ffcc',
+        borderRadius: '8px',
+        boxShadow: '0px 4px 15px rgba(0, 255, 204, 0.6)',
+        cursor: 'pointer',
+        display: 'block'
+    });
+
+    // Efeitos de passar o mouse (onmouseover / onmouseout)
+    btnCred.onmouseover = function() { this.style.backgroundColor = '#111'; this.style.boxShadow = '0px 4px 20px #00ffcc'; };
+    btnCred.onmouseout = function() { this.style.backgroundColor = '#000'; this.style.boxShadow = '0px 4px 15px rgba(0, 255, 204, 0.6)'; };
+
+    // Ação do Clique (Abre a Loja)
+    btnCred.onclick = function() {
+        if (typeof window.abrirLojaFerratech === 'function') {
+            window.abrirLojaFerratech();
+        }
+    };
+
+    // Força a inserção no ponto mais seguro da página
+    document.body.appendChild(btnCred);
+
+    // ========================================================
+    // 2. CRIAÇÃO DA JANELA DA LOJA POP-UP
+    // ========================================================
+    const janelaLoja = document.createElement('div');
+    janelaLoja.id = 'janela-loja-ferratech';
+    Object.assign(janelaLoja.style, {
+        display: 'none',
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.95)',
+        zIndex: '2147483647',
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontFamily: 'Courier New, monospace',
+        color: '#fff'
+    });
+
+    janelaLoja.innerHTML = `
+        <div style="background: #111; border: 3px solid #00ffcc; border-radius: 12px; width: 90%; max-width: 450px; padding: 20px; box-shadow: 0 0 25px #00ffcc; text-align: center;">
+            <h2 style="color: #00ffcc; margin-top: 0; text-shadow: 0 0 5px #00ffcc;">LOJA FERRATECH</h2>
+            <p style="font-size: 16px; border-bottom: 1px dashed #333; padding-bottom: 10px;">
+                🎒 Saldo da Mochila: <span id="loja-saldo-moedas" style="color: #ffaa00; font-weight: bold;">0</span> Moedas
+            </p>
+            <div style="margin: 20px 0; text-align: left; display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 4px solid #00ffcc;">
+                    <div><strong style="color: #00ffcc;">🛡️ Escudo Modo Deus</strong><br><span style="font-size: 11px; color: #aaa;">Invencibilidade por 5s</span></div>
+                    <button onclick="comprarItemLoja('escudo', 50)" style="background: #ffaa00; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; color:#000;">50 M</button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 4px solid #ff3333;">
+                    <div><strong style="color: #ff3333;">🚀 Mísseis Extras</strong><br><span style="font-size: 11px; color: #aaa;">+5 Projéteis pesados</span></div>
+                    <button onclick="comprarItemLoja('misseis', 30)" style="background: #ffaa00; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; color:#000;">30 M</button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 4px solid #ffff00;">
+                    <div><strong style="color: #ffff00;">⚡ Laser Contínuo</strong><br><span style="font-size: 11px; color: #aaa;">Segure para disparar contínuo</span></div>
+                    <button id="btn-comprar-laser" onclick="comprarItemLoja('laser', 100)" style="background: #ffaa00; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; color:#000;">100 M</button>
+                </div>
+            </div>
+            <button onclick="fecharLojaFerratech()" style="background: #00ffcc; color: #000; border: none; width: 100%; padding: 12px; font-weight: bold; font-size: 14px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
+                ◀ VOLTAR PARA O COMBATE
+            </button>
+        </div>
+    `;
+    document.body.appendChild(janelaLoja);
+
+    // ========================================================
+    // 3. LOGICA DO MOTOR DE COMPRAS
+    // ========================================================
+    window.comprarItemLoja = function(item, custo) {
+        let moedasAtuais = typeof moedasColetadas !== 'undefined' ? moedasColetadas : 150;
+
+        if (moedasAtuais >= custo) {
+            moedasAtuais -= custo;
+            if (typeof moedasColetadas !== 'undefined') moedasColetadas = moedasAtuais;
+            document.getElementById('loja-saldo-moedas').innerText = moedasAtuais;
+            alert("🎯 Compra realizada com sucesso!");
+        } else {
+            alert("❌ Moedas insuficientes na mochila!");
+        }
+    };
+
+    window.abrirLojaFerratech = function() {
+        window.jogoPausadoPelaLoja = true;
+        let saldo = typeof moedasColetadas !== 'undefined' ? moedasColetadas : 0;
+        document.getElementById('loja-saldo-moedas').innerText = saldo;
+        document.getElementById('janela-loja-ferratech').style.display = 'flex';
+    };
+
+    window.fecharLojaFerratech = function() {
+        document.getElementById('janela-loja-ferratech').style.display = 'none';
+        window.jogoPausadoPelaLoja = false;
+        window.dispatchEvent(new Event('resize'));
+    };
+})();
 </script>
 
+<button id="menu-credito-fixo" onclick="abrirLojaFerratech()" style="
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2147483647;
+    padding: 15px 25px;
+    background-color: #000000;
+    color: #00ffcc;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    font-weight: bold;
+    border: 3px solid #00ffcc;
+    border-radius: 8px;
+    box-shadow: 0px 4px 15px rgba(0, 255, 204, 0.6);
+    cursor: pointer;
+">
+    💳 CRED
+</button>
+
+<div id="janela-loja-ferratech" style="
+    display: none; 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100vw; 
+    height: 100vh; 
+    background-color: rgba(0, 0, 0, 0.95); 
+    z-index: 2147483647; 
+    justify-content: center; 
+    align-items: center; 
+    font-family: 'Courier New', monospace; 
+    color: #fff;
+">
+    <div style="background: #111; border: 3px solid #00ffcc; border-radius: 12px; width: 90%; max-width: 450px; padding: 20px; box-shadow: 0 0 25px #00ffcc; text-align: center;">
+        <h2 style="color: #00ffcc; margin-top: 0; text-shadow: 0 0 5px #00ffcc;">LOJA FERRATECH</h2>
+        <p style="font-size: 16px; border-bottom: 1px dashed #333; padding-bottom: 10px;">
+            🎒 Saldo da Mochila: <span id="loja-saldo-moedas" style="color: #ffaa00; font-weight: bold;">0</span> Moedas
+        </p>
+        
+        <div style="margin: 20px 0; text-align: left; display: flex; flex-direction: column; gap: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 4px solid #00ffcc;">
+                <div><strong style="color: #00ffcc;">🛡️ Escudo Modo Deus</strong><br><span style="font-size: 11px; color: #aaa;">Invencibilidade por 5s</span></div>
+                <button onclick="comprarItemLoja('escudo', 50)" style="background: #ffaa00; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; color:#000;">50 M</button>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 4px solid #ff3333;">
+                <div><strong style="color: #ff3333;">🚀 Mísseis Extras</strong><br><span style="font-size: 11px; color: #aaa;">+5 Projéteis pesados</span></div>
+                <button onclick="comprarItemLoja('misseis', 30)" style="background: #ffaa00; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; color:#000;">30 M</button>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 6px; border-left: 4px solid #ffff00;">
+                <div><strong style="color: #ffff00;">⚡ Laser Contínuo</strong><br><span style="font-size: 11px; color: #aaa;">Segure para disparar contínuo</span></div>
+                <button id="btn-comprar-laser" onclick="comprarItemLoja('laser', 100)" style="background: #ffaa00; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; color:#000;">100 M</button>
+            </div>
+        </div>
+
+        <button onclick="fecharLojaFerratech()" style="background: #00ffcc; color: #000; border: none; width: 100%; padding: 12px; font-weight: bold; font-size: 14px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
+            ◀ VOLTAR PARA O COMBATE
+        </button>
+    </div>
+</div>
+
+<script>
+function abrirLojaFerratech() {
+    console.log("Carteira Ferratech clicada!");
+    window.jogoPausadoPelaLoja = true;
+    var saldo = typeof moedasColetadas !== 'undefined' ? moedasColetadas : 150;
+    document.getElementById('loja-saldo-moedas').innerText = saldo;
+    document.getElementById('janela-loja-ferratech').style.display = 'flex';
+}
+
+function fecharLojaFerratech() {
+    document.getElementById('janela-loja-ferratech').style.display = 'none';
+    window.jogoPausadoPelaLoja = false;
+    window.dispatchEvent(new Event('resize'));
+}
+
+function comprarItemLoja(item, custo) {
+    var moedasAtuais = typeof moedasColetadas !== 'undefined' ? moedasColetadas : 150;
+    if (moedasAtuais >= custo) {
+        moedasAtuais -= custo;
+        if (typeof moedasColetadas !== 'undefined') moedasColetadas = moedasAtuais;
+        document.getElementById('loja-saldo-moedas').innerText = moedasAtuais;
+        alert("🎯 Compra realizada com sucesso!");
+    } else {
+        alert("❌ Moedas insuficientes na mochila!");
+    }
+}
+</script>
+
+<script>
+// Garante que a trava de pausa comece desligada
+window.jogoPausadoPelaLoja = false;
+
+function abrirLojaFerratech() {
+    console.log("🎒 Carteira Ferratech acessada!");
+    window.jogoPausadoPelaLoja = true;
+    
+    // Puxa o saldo real das moedas que o jogador coletou no jogo.
+    // Se por acaso a variável do jogo não existir no teste, ele assume 150 para testar.
+    if (typeof moedasColetadas === 'undefined') {
+        window.moedasColetadas = 150; 
+    }
+    
+    // Atualiza o texto na tela com o saldo exato
+    document.getElementById('loja-saldo-moedas').innerText = window.moedasColetadas;
+    document.getElementById('janela-loja-ferratech').style.display = 'flex';
+}
+
+function fecharLojaFerratech() {
+    document.getElementById('janela-loja-ferratech').style.display = 'none';
+    window.jogoPausadoPelaLoja = false;
+    window.dispatchEvent(new Event('resize'));
+}
+
+// 🧠 A MATEMÁTICA CORRIGIDA (DECRÉSCIMO REAL DO SALDO)
+function comprarItemLoja(item, custo) {
+    // Garante que estamos lendo a variável global correta
+    if (typeof moedasColetadas === 'undefined') {
+        window.moedasColetadas = 150;
+    }
+
+    // Checa se o jogador tem saldo suficiente na mochila
+    if (window.moedasColetadas >= custo) {
+        
+        // CORREÇÃO AQUI: Subtrai o custo do saldo atual (Decréscimo)
+        window.moedasColetadas = window.moedasColetadas - custo;
+        
+        // Atualiza o painel visual imediatamente para o jogador ver o prejuízo
+        document.getElementById('loja-saldo-moedas').innerText = window.moedasColetadas;
+        
+        // Executa a ação baseada no que ele comprou
+        if (item === 'escudo') {
+            alert("🛡️ Escudo Modo Deus ativado para a próxima batalha!");
+        } else if (item === 'misseis') {
+            alert("🚀 Mísseis Extras adicionados ao arsenal!");
+        } else if (item === 'laser') {
+            alert("⚡ Laser Contínuo liberado!");
+        } 
+        // 🍔 Cuidado: Pegadinha do Lanche!
+        else if (item === 'lanche') {
+            alert("🍔 Você comprou um super Hambúrguer virtual... Mas a sua nave não tem estômago! Seu saldo caiu drasticamente! 😂");
+        } else if (item === 'refri') {
+            alert("🥤 Refrigerante Genérico consumido! Refrescante, mas totalmente inútil para o combate. Valeu pelos créditos! 💸");
+        }
+        
+    } else {
+        // Se o cara gastou tudo com lanche, não vai conseguir comprar arma!
+        alert("❌ Saldo Insuficiente na mochila! Você gastou demais e ficou sem créditos para a guerra!");
+    }
+}
+</script>
 
 </body>
 </html>
