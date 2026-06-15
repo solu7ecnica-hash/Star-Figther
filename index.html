@@ -102,6 +102,12 @@
     </script>
 
     <style>
+	
+	
+	
+	
+	
+	/*================================================================================*/
         .bg-photo-overlay, .bg-photo-container, .centered-top-placeholder, 
         .centered-top-container, header, .skip-navigation, .sidebar-container {
             display: none !important; height: 0 !important; padding: 0 !important; margin: 0 !important;
@@ -138,9 +144,102 @@
             -ms-user-select: none;      
             user-select: none;          
         }
-    </style>
+		
+	
+    /* Esconde elementos desnecessários da página */
+    .bg-photo-overlay, .bg-photo-container, .centered-top-placeholder, 
+    .centered-top-container, header, .skip-navigation, .sidebar-container {
+        display: none !important; height: 0 !important; padding: 0 !important; margin: 0 !important;
+    }
+    
+    .page, .page_body, .centered, .centered-bottom, .main, .main-section {
+        padding: 0 !important; margin: 0 !important; max-width: 100% !important; width: 100% !important;
+    }
+    
+    /* Configuração do Corpo da Página */
+    html, body {
+        margin: 0; 
+        padding: 0; 
+        width: 100%; 
+        height: 100%;
+        background-color: #000; 
+        overflow: hidden;
+        font-family: sans-serif;
+        -webkit-user-select: none;  
+        -moz-user-select: none;     
+        -ms-user-select: none;      
+        user-select: none;   
+    }
+	
+	/*===========================================================*/
+	
+	#painel-superior {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 60px !important;
+    z-index: 200000000 !important; /* Z-index supremo para ficar na frente de tudo */
+    background: rgba(10, 15, 30, 0.95) !important;
+    border-bottom: 3px solid #00e5ff !important; /* Linha neon azul */
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important; /* Distribui os blocos igualmente */
+    padding: 0 10px !important;
+    box-sizing: border-box !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    color: #fff !important;
+    font-size: 13px !important;
+}
+
+/* Estilo para cada bloco de dispositivo no painel */
+.dispositivo-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+    border: 1px solid rgba(0, 229, 255, 0.2) !important;
+    white-space: nowrap !important;
+}
+
+/* Estilo do Botão da Carteira (Mantendo a sua ação de abrir a loja) */
+#menu-credito-fixo {
+    background: #000000 !important;
+    border: 2px solid #00ffcc !important;
+    color: #fff !important;
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    box-shadow: 0px 0px 8px #00ffcc;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 13px !important;
+}
+
+/* Estilo do Botão de Pause */
+#btn-pause {
+    background: #00e5ff !important;
+    border: none !important;
+    color: #000 !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-weight: bold !important;
+    font-size: 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+</style>
+
 </head>
-<body>
 
 <body>
 <div id="tela-splash" style="position: fixed !important; 
@@ -149,7 +248,29 @@
  background-image: url('TELA.png') !important; background-position: 
  center !important; background-repeat: no-repeat !important; background-size: 
  contain !important; z-index: 99999999 !important;"></div>
+<div id="painel-superior">
+    <button id="menu-credito-fixo" onclick="abrirLojaFerratech()">
+     <img src="saldo.png" alt="Meu Saldo" style="width: 27px; height: 30; display: block;"> <span id="painel-saldo">R$ 0</span>
+    </button>
 
+    <div class="dispositivo-item">
+        🚀 Mísseis: <span id="painel-misseis" style="color: #ffcc00; font-weight: bold;">0</span>
+    </div>
+
+    <div class="dispositivo-item">
+        🛡️ Escudo: <span id="painel-escudo" style="color: #00ffcc;">Ativo</span>
+    </div>
+
+    <div class="dispositivo-item">
+        ⚡ Laser: <span id="painel-laser" style="color: #ff3366;">Pronto</span>
+    </div>
+
+    <div class="dispositivo-item">
+        🔫 Tiro: <span id="painel-tiro" style="color: #00ff66; font-weight: bold;">Rajada 1</span>
+    </div>
+
+    <button id="btn-pause" onclick="alternarPause()">⏸️</button>
+</div>
 <div class="caixa-jogo-fixa">
     <canvas id="gameCanvas"></canvas>
 
@@ -1794,7 +1915,7 @@ setTimeout(function() {
         cursor: pointer !important;
         padding: 0 !important;
     ">
-        <img src="saldo.png" alt="Meu Saldo" style="width: 40px; height: 50px; display: block;">
+        <img src="saldo.png" alt="Meu Saldo" style="width: 45px; height: 50; display: block;">
     </button>
 
 <div id="janela-loja-ferratech" style="
@@ -1814,7 +1935,7 @@ setTimeout(function() {
     <div style="background: #111; border: 3px solid #00ffcc; border-radius: 12px; width: 90%; max-width: 450px; padding: 20px; box-shadow: 0 0 25px #00ffcc; text-align: center;">
         <h2 style="color: #00ffcc; margin-top: 0; text-shadow: 0 0 5px #00ffcc;">LOJA FERRATECH</h2>
         <p style="font-size: 16px; border-bottom: 1px dashed #333; padding-bottom: 10px;">
-            🎒 Saldo da Mochila: <span id="loja-saldo-moedas" style="color: #ffaa00; font-weight: bold;">0</span> Moedas
+            🎒 Meu Saldo: <span id="loja-saldo-moedas" style="color: #ffaa00; font-weight: bold;">0</span> Moedas
         </p>
         
         <div style="margin: 20px 0; text-align: left; display: flex; flex-direction: column; gap: 15px;">
