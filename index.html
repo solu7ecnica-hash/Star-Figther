@@ -102,12 +102,6 @@
     </script>
 
     <style>
-	
-	
-	
-	
-	
-	/*================================================================================*/
         .bg-photo-overlay, .bg-photo-container, .centered-top-placeholder, 
         .centered-top-container, header, .skip-navigation, .sidebar-container {
             display: none !important; height: 0 !important; padding: 0 !important; margin: 0 !important;
@@ -145,7 +139,12 @@
             user-select: none;          
         }
 		
-	
+		
+		
+		
+		
+		
+		<style>
     /* Esconde elementos desnecessários da página */
     .bg-photo-overlay, .bg-photo-container, .centered-top-placeholder, 
     .centered-top-container, header, .skip-navigation, .sidebar-container {
@@ -170,75 +169,121 @@
         -ms-user-select: none;      
         user-select: none;   
     }
+
+    /* O PAINEL SUPERIOR (Sempre com Z-Index Absoluto e Fixo no topo) */
+    #painel-superior {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 60px !important;
+        z-index: 200000000 !important; /* Ganha do 999999 da caixa do jogo */
+        background: rgba(10, 15, 30, 0.95) !important;
+        border-bottom: 3px solid #00e5ff !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 0 15px !important;
+        box-sizing: border-box !important;
+        font-family: 'Courier New', Courier, monospace;
+        color: #fff;
+    }
+
+    /* Container do Jogo (Ocupa a tela inteira, mas o painel flutua sobre ele) */
+    .caixa-jogo-fixa {
+        position: fixed !important;
+        top: 0 !important; 
+        left: 0 !important;
+        width: 100vw !important; 
+        height: 100vh !important;
+        background-color: #05050a !important;
+        z-index: 999999 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+
+    /* Renderização limpa do Canvas */
+    canvas { 
+        display: block !important; 
+        background-color: #0b0b16 !important;
+        box-shadow: 0 0 30px rgba(0, 210, 255, 0.3);
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+    }
 	
-	/*===========================================================*/
-	
-	#painel-superior {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 60px !important;
-    z-index: 200000000 !important; /* Z-index supremo para ficar na frente de tudo */
-    background: rgba(10, 15, 30, 0.95) !important;
-    border-bottom: 3px solid #00e5ff !important; /* Linha neon azul */
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: space-between !important; /* Distribui os blocos igualmente */
-    padding: 0 10px !important;
-    box-sizing: border-box !important;
-    font-family: 'Courier New', Courier, monospace !important;
-    color: #fff !important;
-    font-size: 13px !important;
-}
+	<style>
+    /* Esconde elementos desnecessários da página */
+    .bg-photo-overlay, .bg-photo-container, .centered-top-placeholder, 
+    .centered-top-container, header, .skip-navigation, .sidebar-container {
+        display: none !important; height: 0 !important; padding: 0 !important; margin: 0 !important;
+    }
+    
+    .page, .page_body, .centered, .centered-bottom, .main, .main-section {
+        padding: 0 !important; margin: 0 !important; max-width: 100% !important; width: 100% !important;
+    }
+    
+    /* Configuração do Corpo da Página */
+    html, body {
+        margin: 0; 
+        padding: 0; 
+        width: 100%; 
+        height: 100%;
+        background-color: #000; 
+        overflow: hidden;
+        font-family: sans-serif;
+        -webkit-user-select: none;  
+        -moz-user-select: none;     
+        -ms-user-select: none;      
+        user-select: none;   
+    }
 
-/* Estilo para cada bloco de dispositivo no painel */
-.dispositivo-item {
-    display: flex !important;
-    align-items: center !important;
-    gap: 5px !important;
-    background: rgba(255, 255, 255, 0.05) !important;
-    padding: 4px 8px !important;
-    border-radius: 4px !important;
-    border: 1px solid rgba(0, 229, 255, 0.2) !important;
-    white-space: nowrap !important;
-}
+    /* O PAINEL SUPERIOR (Sempre com Z-Index Absoluto e Fixo no topo) */
+    #painel-superior {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 60px !important;
+        z-index: 200000000 !important; /* Ganha do 999999 da caixa do jogo */
+        background: rgba(10, 15, 30, 0.95) !important;
+        border-bottom: 3px solid #00e5ff !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 0 15px !important;
+        box-sizing: border-box !important;
+        font-family: 'Courier New', Courier, monospace;
+        color: #fff;
+    }
 
-/* Estilo do Botão da Carteira (Mantendo a sua ação de abrir a loja) */
-#menu-credito-fixo {
-    background: #000000 !important;
-    border: 2px solid #00ffcc !important;
-    color: #fff !important;
-    padding: 4px 8px !important;
-    border-radius: 6px !important;
-    cursor: pointer !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    box-shadow: 0px 0px 8px #00ffcc;
-    font-family: 'Courier New', Courier, monospace !important;
-    font-size: 13px !important;
-}
+    /* Container do Jogo (Ocupa a tela inteira, mas o painel flutua sobre ele) */
+    .caixa-jogo-fixa {
+        position: fixed !important;
+        top: 0 !important; 
+        left: 0 !important;
+        width: 100vw !important; 
+        height: 100vh !important;
+        background-color: #05050a !important;
+        z-index: 999999 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
 
-/* Estilo do Botão de Pause */
-#btn-pause {
-    background: #00e5ff !important;
-    border: none !important;
-    color: #000 !important;
-    width: 32px !important;
-    height: 32px !important;
-    border-radius: 4px !important;
-    cursor: pointer !important;
-    font-weight: bold !important;
-    font-size: 14px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
+    /* Renderização limpa do Canvas */
+    canvas { 
+        display: block !important; 
+        background-color: #0b0b16 !important;
+        box-shadow: 0 0 30px rgba(0, 210, 255, 0.3);
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+    }
+</style>
 </style>
 
+
+    </style>
 </head>
 
 <body>
@@ -248,29 +293,7 @@
  background-image: url('TELA.png') !important; background-position: 
  center !important; background-repeat: no-repeat !important; background-size: 
  contain !important; z-index: 99999999 !important;"></div>
-<div id="painel-superior">
-    <button id="menu-credito-fixo" onclick="abrirLojaFerratech()">
-     <img src="saldo.png" alt="Meu Saldo" style="width: 27px; height: 30; display: block;"> <span id="painel-saldo">R$ 0</span>
-    </button>
 
-    <div class="dispositivo-item">
-        🚀 Mísseis: <span id="painel-misseis" style="color: #ffcc00; font-weight: bold;">0</span>
-    </div>
-
-    <div class="dispositivo-item">
-        🛡️ Escudo: <span id="painel-escudo" style="color: #00ffcc;">Ativo</span>
-    </div>
-
-    <div class="dispositivo-item">
-        ⚡ Laser: <span id="painel-laser" style="color: #ff3366;">Pronto</span>
-    </div>
-
-    <div class="dispositivo-item">
-        🔫 Tiro: <span id="painel-tiro" style="color: #00ff66; font-weight: bold;">Rajada 1</span>
-    </div>
-
-    <button id="btn-pause" onclick="alternarPause()">⏸️</button>
-</div>
 <div class="caixa-jogo-fixa">
     <canvas id="gameCanvas"></canvas>
 
@@ -293,7 +316,7 @@
         <div style="background: #111; border: 3px solid #00ffcc; border-radius: 12px; width: 90%; max-width: 450px; padding: 20px; box-shadow: 0 0 25px #00ffcc; text-align: center;">
             <h2 style="color: #00ffcc; margin-top: 0; text-shadow: 0 0 5px #00ffcc;">LOJA FERRATECH</h2>
             <p style="font-size: 16px; border-bottom: 1px dashed #333; padding-bottom: 10px;">
-                🎒 Meu Saldo: <span id="loja-saldo-moedas" style="color: #ffaa00; font-weight: bold;">0</span> Moedas
+                🎒 Saldo da Mochila: <span id="loja-saldo-moedas" style="color: #ffaa00; font-weight: bold;">0</span> Moedas
             </p>
             
             <div style="margin: 20px 0; text-align: left; display: flex; flex-direction: column; gap: 15px;">
@@ -351,8 +374,11 @@
     const imgMissil = new Image(); imgMissil.src = "m_2.png"; 
 
     // --- MECÂNICA DE MOEDAS ESPECIAIS ---
-    let inimigosAbatidosContador = 0;
-    let moedasEspeciais = [];
+    // --- MECÂNICA DE MOEDAS E CARTEIRA SINCRONIZADA ---
+let moedasColetadas = parseInt(localStorage.getItem("ferratech_creditos")) || 0;
+let moedasEspeciais = []; // Mantém a física das moedas flutuando na tela
+	
+	
     window.MochilaIntercambio = {
         forçarGatilho: null
     };
@@ -1374,14 +1400,23 @@
                 }
             });
 
-            moedasEspeciais.forEach(m => {
-                ctx.beginPath();
-                ctx.arc(m.x + m.largura/2, m.y + m.altura/2, m.largura/2, 0, Math.PI * 2);
-                ctx.fillStyle = "#FFD700"; ctx.fill();
-                ctx.lineWidth = 1.5; ctx.strokeStyle = "#FFFFFF"; ctx.stroke();
-                ctx.closePath();
-            });
+           moedasEspeciais.forEach((m, i) => { // <--- Adicionamos o ', i' aqui para mapear a posição da moeda
+    // 1. DESENHA A MOEDA NA TELA (Seu código original)
+    ctx.beginPath();
+    ctx.arc(m.x + m.largura/2, m.y + m.altura/2, m.largura/2, 0, Math.PI * 2);
+    ctx.fillStyle = "#FFD700"; 
+    ctx.fill();
+    ctx.lineWidth = 1.5; 
+    ctx.strokeStyle = "#FFFFFF"; 
+    ctx.stroke();
+    ctx.closePath();
 
+    // 2. LOGICA DE COLISÃO E COLETA (Onde a mágica acontece)
+    // Verifica se a nave (x_jogador) colidiu com a moeda atual (m)
+    if (verificarColisao(x_jogador, m)) { 
+        coletarMoedaDoEspaco(i); // Remove a moeda certa usando o índice 'i' e soma na carteira!
+    }
+});
             batedores.forEach(b => {
                 if (b.tipo === 2) {
                     if (imgBatedor2.complete && imgBatedor2.width > 0) ctx.drawImage(imgBatedor2, b.x, b.y, b.largura, b.altura);
@@ -1915,8 +1950,26 @@ setTimeout(function() {
         cursor: pointer !important;
         padding: 0 !important;
     ">
-        <img src="saldo.png" alt="Meu Saldo" style="width: 45px; height: 50; display: block;">
+        <img id="botao-carteirinha" src="saldo.png" alt="Meu Saldo" style="width: 40px; height: 40px; display: block;">
     </button>
+<script>
+	function fecharLojaFerratech() {
+    // 1. Oculta a janela visual da loja
+    const janelaLoja = document.getElementById('janela-loja-ferratech');
+    if (janelaLoja) {
+        janelaLoja.style.display = 'none';
+		const carteirinha = document.getElementById('botao-carteirinha');
+    if (carteirinha) {
+        carteirinha.style.display = 'block'; // <--- AQUI É 'block' para aparecer!
+    }
+    }
+    
+    // 2. RETORNA O COMBATE: Despausa o motor do jogo!
+    jogoPausado = false; 
+    
+    console.log("Retornando ao combate espacial...");
+}
+</script>
 
 <div id="janela-loja-ferratech" style="
     display: none; 
@@ -1935,7 +1988,7 @@ setTimeout(function() {
     <div style="background: #111; border: 3px solid #00ffcc; border-radius: 12px; width: 90%; max-width: 450px; padding: 20px; box-shadow: 0 0 25px #00ffcc; text-align: center;">
         <h2 style="color: #00ffcc; margin-top: 0; text-shadow: 0 0 5px #00ffcc;">LOJA FERRATECH</h2>
         <p style="font-size: 16px; border-bottom: 1px dashed #333; padding-bottom: 10px;">
-            🎒 Meu Saldo: <span id="loja-saldo-moedas" style="color: #ffaa00; font-weight: bold;">0</span> Moedas
+            🎒 Saldo da Mochila: <span id="loja-saldo-moedas" style="color: #ffaa00; font-weight: bold;">0</span> Moedas
         </p>
         
         <div style="margin: 20px 0; text-align: left; display: flex; flex-direction: column; gap: 15px;">
@@ -1960,33 +2013,67 @@ setTimeout(function() {
 </div>
 
 <script>
-function abrirLojaFerratech() {
-    console.log("Carteira Ferratech clicada!");
-    window.jogoPausadoPelaLoja = true;
-    var saldo = typeof moedasColetadas !== 'undefined' ? moedasColetadas : 150;
-    document.getElementById('loja-saldo-moedas').innerText = saldo;
-    document.getElementById('janela-loja-ferratech').style.display = 'flex';
+	// Se não existir nada salvo na carteira do navegador, começa do ZERO
+if (localStorage.getItem("ferratech_creditos") === null) {
+    localStorage.setItem("ferratech_creditos", 0); 
 }
 
-function fecharLojaFerratech() {
-    document.getElementById('janela-loja-ferratech').style.display = 'none';
-    window.jogoPausadoPelaLoja = false;
-    window.dispatchEvent(new Event('resize'));
+function atualizarInterfaceLoja() {
+    // Sincroniza o valor persistente com a variável de execução
+    moedasColetadas = parseInt(localStorage.getItem("ferratech_creditos")) || 0;
+    
+    // Atualiza o elemento de texto da Loja HTML
+    const elementoSaldo = document.getElementById('loja-saldo-moedas');
+    if (elementoSaldo) {
+        elementoSaldo.innerText = moedasColetadas;
+    }
+}
+
+function abrirLojaFerratech() {
+    console.log("Carteira Ferratech acessada com sucesso!");
+    jogoPausado = true; // Pausa o motor do jogo enquanto compra
+    atualizarInterfaceLoja(); // Sincroniza antes de exibir
+    document.getElementById('janela-loja-ferratech').style.display = 'flex';
+	
+	const carteirinha = document.getElementById('botao-carteirinha');
+    if (carteirinha) {
+        carteirinha.style.display = 'none'; // <--- AQUI É 'none' para sumir!
+    }
 }
 
 function comprarItemLoja(item, custo) {
-    var moedasAtuais = typeof moedasColetadas !== 'undefined' ? moedasColetadas : 150;
+    // 1. Puxa o saldo real direto do banco local
+    let moedasAtuais = parseInt(localStorage.getItem("ferratech_creditos")) || 0;
+    
+    // 2. Validação matemática de fundos
     if (moedasAtuais >= custo) {
-        moedasAtuais -= custo;
-        if (typeof moedasColetadas !== 'undefined') moedasColetadas = moedasAtuais;
-        document.getElementById('loja-saldo-moedas').innerText = moedasAtuais;
-        alert("🎯 Compra realizada com sucesso!");
+        moedasAtuais -= custo; // Deduz o valor
+        
+        // 3. Salva imediatamente o novo saldo
+        localStorage.setItem("ferratech_creditos", moedasAtuais);
+        
+        // 4. Sincroniza a memória de execução e a interface
+        atualizarInterfaceLoja();
+        
+        // --- APLICAÇÃO DOS EFEITOS DOS ITENS NO JOGO ---
+        if (item === 'escudo') {
+            escudoAtivo = true; // Certifique-se de ter essa flag criada no escopo global
+            setTimeout(() => { escudoAtivo = false; }, 5000);
+            alert("🛡️ MÓDULO DE ESCUDO ATIVADO POR 5 SEGUNDOS!");
+        } else if (item === 'misseis') {
+            qtdMisseis += 5;
+            alert("🚀 +5 MÍSSEIS TÁTICOS CARREGADOS! (Use: Baixo, Baixo, Cima)");
+        } else if (item === 'laser') {
+            laserContinuoDisponivel = true;
+            alert("⚡ MÓDULO DE LASER REFORÇADO CONECTADO!");
+        } else if (item === 'lanche' || item === 'refri') {
+            x_jogador.vida = Math.min(x_jogador.vidaMax, x_jogador.vida + 3); // Cura 3 pontos de vida
+            alert("🍔 SISTEMAS BIOLÓGICOS E ENERGIA REESTABELECIDOS!");
+        }
     } else {
-        alert("❌ Moedas insuficientes na mochila!");
+        alert("❌ SALDO INSUFICIENTE! Abata mais invasores para coletar moedas.");
     }
 }
 </script>
-
-
 </body>
 </html>
